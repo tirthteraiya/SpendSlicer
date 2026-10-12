@@ -23,6 +23,7 @@ from spendslicer.web.context import friendly_error
 from spendslicer.web.deps import (
     MONTH_PERIOD_RE,
     cache_get,
+    cache_ns,
     cache_set,
     get_ce_client,
     get_cost_source,
@@ -45,24 +46,6 @@ def _fanout_pool():
     # Yields the shared pool WITHOUT shutting it down on exit; callers still
     # block on each future's .result(), so completion semantics are unchanged.
     yield _FANOUT_POOL
-
-# A specific calendar month period, e.g. "2026-05".
-def _account_tag(profile: str) -> str:
-    """Resolved account id for ``profile`` from the (cached) profile choices.
-
-    Route-level cache keys are namespaced by account, not just profile name:
-    if a profile is later repointed to a different AWS account (config edit,
-    SSO role change), its stale cached numbers must not be served as the new
-    account's. Returns ``"na"`` when the account can't be resolved cheaply."""
-    try:
-        from spendslicer.web.context import get_profile_choices
-        for c in get_profile_choices():
-            if c.get("profile") == profile:
-                return c.get("account_id") or "na"
-    except Exception:
-        pass
-    return "na"
-
 
 def _cache_ctx(ckey: str, ctx: dict) -> None:
     """Persist a built ctx unless it errored or is flagged transient.
@@ -129,6 +112,20 @@ def _prev_window(period: str, window: TimeWindow) -> TimeWindow:
     return TimeWindow(start=window.start - timedelta(days=n), end=window.start)
 
 
+def _cached_forecast(ce, account_id: str, fcast_window: TimeWindow, spec):
+    """The forecast window is the rest of this month whatever period is viewed,
+    so cache it per account instead of paying for it once per period."""
+    s, e = fcast_window.iso()
+    key = f"forecast:{account_id}:{s}:{e}:{spec.summary()}"
+    hit = cache_get(key)
+    if hit is not None:
+        return hit["amount"]
+    cv = ce.get_forecast(fcast_window, spec=spec)  # raises on transient errors: not cached
+    amount = cv.amount_usd if cv else None
+    cache_set(key, {"amount": amount})
+    return amount
+
+
 def _build_summary_ctx(profile: str, period: str) -> dict:
     ctx: dict = {
         "error": None,
@@ -183,7 +180,7 @@ def _build_summary_ctx(profile: str, period: str) -> dict:
             )
             f_forecast = (
                 pool.submit(
-                    contextvars.copy_context().run, lambda: ce.get_forecast(fcast_window, spec=spec)
+                    contextvars.copy_context().run, _cached_forecast, ce, account_id, fcast_window, spec
                 )
                 if want_forecast else None
             )
@@ -235,8 +232,8 @@ def _build_summary_ctx(profile: str, period: str) -> dict:
         if prev_amount >= 0.50:
             raw = (total_amount - prev_amount) / prev_amount * 100
             ctx["change_pct"] = max(-999.9, min(9999.9, raw))
-        if forecast_cv:
-            ctx["forecast"] = mtd_amount + forecast_cv.amount_usd
+        if forecast_cv is not None:
+            ctx["forecast"] = mtd_amount + forecast_cv
             ctx["forecast_mtd_actual"] = mtd_amount
         elif is_month_last_day:
             # Nothing left to forecast — the month closes today at the actual.
@@ -314,7 +311,7 @@ def api_cost_summary_data(
     period: str = Query("mtd"),
 ):
     period = safe_period(period)
-    ckey = f"summary_json:{_account_tag(profile)}:{profile}:{period}"
+    ckey = f"summary_json:{cache_ns(profile)}:{period}"
     cached = cache_get(ckey)
     if cached:
         return JSONResponse(cached)
@@ -330,7 +327,7 @@ def api_cost_services_data(
     limit: int = Query(0),
 ):
     period = safe_period(period)
-    ckey = f"services_json:{_account_tag(profile)}:{profile}:{period}:{limit}"
+    ckey = f"services_json:{cache_ns(profile)}:{period}:{limit}"
     cached = cache_get(ckey)
     if cached:
         return JSONResponse(cached)
@@ -460,7 +457,7 @@ def api_cost_services_composition_data(
     period: str = Query("mtd"),
 ):
     period = safe_period(period)
-    ckey = f"services_composition_json:{_account_tag(profile)}:{profile}:{period}"
+    ckey = f"services_composition_json:{cache_ns(profile)}:{period}"
     cached = cache_get(ckey)
     if cached:
         return JSONResponse(cached)
@@ -473,58 +470,22 @@ def api_cost_services_composition_data(
 def api_trend_data(profile: str = Query("default"), period: str = Query("3m")):
     period = safe_period(period, default="3m")
     gran = _trend_granularity_for_period(period)
-    ckey = f"trend_data:{_account_tag(profile)}:{profile}:{period}:{gran.value}"
+    ckey = f"trend_data:{cache_ns(profile)}:{period}:{gran.value}"
     cached = cache_get(ckey)
     if cached:
         return JSONResponse(cached)
     try:
         session = get_session(profile)
-        ce = get_ce_client(session)
-        spec = pre_credit_gross()
-        window = period_to_window(period)
-        points = ce.get_trend(window, granularity=gran, spec=spec)
-        labels = [p.period_start[:10] for p in points] if gran == Granularity.DAILY else [p.period_start[:7] for p in points]
-        data = {
-            "labels": labels,
-            "values": [round(p.value.amount_usd, 3) for p in points],
-        }
+        account_id = session.client("sts").get_caller_identity()["Account"]
+        # Derived from the same cached matrix the summary and services cards
+        # read for this period, so the chart costs no Cost Explorer call of its
+        # own (it used to be a separate get_trend, re-billed per period).
+        m = get_cost_source(session).get_matrix(
+            profile, account_id, period_to_window(period), pre_credit_gross()
+        )
+        labels, values = m.trend() if gran == Granularity.DAILY else m.monthly_trend()
+        data = {"labels": labels, "values": [round(v, 3) for v in values]}
         cache_set(ckey, data)
         return JSONResponse(data)
     except Exception as exc:
         return JSONResponse({"error": friendly_error(exc), "labels": [], "values": []})
-
-
-@router.get("/trend-table/data")
-def api_trend_table_data(
-    profile: str = Query("default"),
-    period: str = Query("3m"),
-):
-    period = safe_period(period, default="3m")
-    gran = _trend_granularity_for_period(period)
-    ckey = f"trend_table_json:{_account_tag(profile)}:{profile}:{period}:{gran.value}"
-    cached = cache_get(ckey)
-    if cached:
-        return JSONResponse(cached)
-
-    ctx: dict = {
-        "error": None,
-        "points": [],
-        "max_cost": 0.0,
-        "cost_basis_label": "Pre-credit · excludes Credit/Refund · UTC",
-    }
-    try:
-        session = get_session(profile)
-        ce = get_ce_client(session)
-        window = period_to_window(period)
-        raw = ce.get_trend(window, granularity=gran, spec=pre_credit_gross())
-        period_fmt = (lambda p: p.period_start[:10]) if gran == Granularity.DAILY else (lambda p: p.period_start[:7])
-        points = [{"period": period_fmt(p), "cost": p.value.amount_usd} for p in reversed(raw)]
-        ctx["points"] = points
-        ctx["max_cost"] = max((p["cost"] for p in points), default=0.0)
-    except Exception as exc:
-        ctx["error"] = friendly_error(exc)
-    if ctx.get("error") is None:
-        cache_set(ckey, ctx)
-    return JSONResponse(ctx)
-
-

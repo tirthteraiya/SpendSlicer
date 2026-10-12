@@ -238,6 +238,30 @@ def get_session(profile: str = Query("default")) -> boto3.Session:
     return session
 
 
+def _account_tag(profile: str) -> str:
+    """Resolved account id for ``profile`` from the (cached) profile choices.
+
+    Route-level cache keys are namespaced by account, not just profile name:
+    if a profile is later repointed to a different AWS account (config edit,
+    SSO role change), its stale cached numbers must not be served as the new
+    account's. Returns ``"na"`` when the account can't be resolved cheaply."""
+    try:
+        from spendslicer.web.context import get_profile_choices
+        for c in get_profile_choices():
+            if c.get("profile") == profile:
+                return c.get("account_id") or "na"
+    except Exception:
+        pass
+    return "na"
+
+
+def cache_ns(profile: str) -> str:
+    """Route cache namespace: the account when known, so two profiles on one
+    account share entries (and CE calls); the profile name only as a fallback."""
+    acct = _account_tag(profile)
+    return acct if acct != "na" else f"na:{profile}"
+
+
 def get_ce_client(session: boto3.Session) -> CostExplorerClient:
     """Construct a CostExplorerClient bound to ``session``.
 

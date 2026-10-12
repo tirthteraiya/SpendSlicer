@@ -18,14 +18,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.background import BackgroundTask
 
 from spendslicer.core.service_groups import merge_ec2_service_groups
-from spendslicer.core.types import Granularity
 from spendslicer.exporters import ScheduledExportConfig, run_scheduled_export
 from spendslicer.web.context import friendly_error
 from spendslicer.web.deps import (
     cache_bust,
     cache_get,
+    cache_ns,
     cache_set,
-    get_ce_client,
+    cold_single_flight,
     get_cost_source,
     get_session,
     is_valid_period,
@@ -105,38 +105,30 @@ def _safe_filename(name: str | None, ext: str) -> str:
 
 
 def _build_report(profile: str, period: str) -> tuple[dict, object]:
-    import contextvars
-    from concurrent.futures import ThreadPoolExecutor
-
     from spendslicer.audit.budgets import get_budget_findings
     from spendslicer.core.filters import pre_credit_gross
     from spendslicer.core.provenance import Provenance
     from spendslicer.core.types import CostMetric
+    from spendslicer.web.routes.resources_api import build_resources_ctx
 
     session = get_session(profile)
-    ce = get_ce_client(session)
     window = period_to_window(period)
     spec = pre_credit_gross()
 
     account_id = session.client("sts").get_caller_identity()["Account"]
-    src = get_cost_source(session)
-
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        # Copy the current context into each worker so the CE call counter
-        # ContextVar (set by CECountingMiddleware) propagates into pool threads.
-        ctx_matrix = contextvars.copy_context()
-        ctx_trend = contextvars.copy_context()
-        ctx_resources = contextvars.copy_context()
-        f_matrix = pool.submit(ctx_matrix.run, src.get_matrix, profile, account_id, window, spec)
-        f_trend = pool.submit(ctx_trend.run, lambda: ce.get_trend(window, Granularity.MONTHLY, spec=spec))
-        f_resources = pool.submit(
-            ctx_resources.run,
-            lambda: src.attribute_resources(account_id, window, session=session, spec=spec),
-        )
-
-    m = f_matrix.result()
-    trend_points = f_trend.result()
-    raw_resources = f_resources.result()
+    m = get_cost_source(session).get_matrix(profile, account_id, window, spec)
+    # Same cache entry the Resources page fills, so exporting what is already
+    # on screen does not pay for another full multi-region enumeration, and the
+    # trend is read off the matrix instead of a separate CE call.
+    rkey = f"resources:{cache_ns(profile)}:{period}:all"
+    res_ctx = cold_single_flight(
+        rkey, lambda: build_resources_ctx(profile, period, "all"),
+        cacheable=lambda v: v.get("error") is None,
+    )
+    if res_ctx.get("error"):
+        raise RuntimeError(res_ctx["error"])
+    raw_resources = res_ctx.get("rows", [])
+    month_labels, month_values = m.monthly_trend()
     budget_findings = [b.to_dict() for b in get_budget_findings(session)]
 
     prov = Provenance(
@@ -155,8 +147,8 @@ def _build_report(profile: str, period: str) -> tuple[dict, object]:
         for g in services
     ]
     trend = [
-        {"period": p.period_start[:7], "cost_usd": round(p.value.amount_usd, 3)}
-        for p in trend_points
+        {"period": label, "cost_usd": round(v, 3)}
+        for label, v in zip(month_labels, month_values, strict=True)
     ]
     report = _assemble_report(
         profile=profile, period=period, total=m.total(),

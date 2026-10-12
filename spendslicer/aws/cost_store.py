@@ -64,6 +64,16 @@ class DailyServiceMatrix:
         values = [per_day.get(day, 0.0) for day in labels]
         return labels, values
 
+    def monthly_trend(self) -> tuple[list[str], list[float]]:
+        """Per-month totals ("YYYY-MM"), so trend views never need their own CE call."""
+        per_month: dict[str, float] = {}
+        for d in self.days:
+            per_month.setdefault(d[:7], 0.0)
+        for (d, _s), v in self.cells.items():
+            per_month[d[:7]] = per_month.get(d[:7], 0.0) + v
+        labels = sorted(per_month)
+        return labels, [per_month[m] for m in labels]
+
     def to_grouped_cost_list(self, provenance: Any) -> list:
         """Convert matrix's service totals into GroupedCost list for existing helpers."""
         from spendslicer.aws.cost_explorer import GroupedCost  # local to dodge any cycle
@@ -110,9 +120,12 @@ class CostStore:
         )
 
     @staticmethod
-    def _key(profile: str, account_id: str, window: _Window, spec_summary: str) -> str:
+    def _key(account_id: str, window: _Window, spec_summary: str) -> str:
+        # Keyed by account, not profile: CE returns the same data for every
+        # principal in an account, so "default" and "prod" (or several SSO
+        # roles) pointing at one account must share one paid fetch.
         s, e = window.iso()
-        return f"matrix:{profile}:{account_id}:{s}:{e}:{spec_summary}"
+        return f"matrix:{account_id}:{s}:{e}:{spec_summary}"
 
     @staticmethod
     def _is_closed_window(window: _Window) -> bool:
@@ -142,7 +155,7 @@ class CostStore:
         force: bool = False,
     ) -> DailyServiceMatrix:
         spec_summary = _spec_summary(spec)
-        key = self._key(profile, account_id, window, spec_summary)
+        key = self._key(account_id, window, spec_summary)
 
         # Fast path: serve a warm cache hit without taking any per-key lock.
         if not force:
@@ -166,11 +179,14 @@ class CostStore:
                 raw = self._ce.daily_service_matrix(window, spec=spec)
                 m = DailyServiceMatrix.from_ce(raw)
 
-                # Closed windows cache effectively forever; open (today) 15 min.
+                # Closed windows cache effectively forever. Open ones use the
+                # app-wide TTL: get() never serves stale, so a 15-minute TTL here
+                # just re-billed the matrix twice per route-cache lifetime, and CE
+                # itself only refreshes a few times a day.
                 if self._is_closed_window(window):
                     ttl, swr = 30 * 24 * 3600.0, 0.0      # 30 days, no SWR
                 else:
-                    ttl, swr = 900.0, 6 * 3600.0          # 15 min fresh, 6h stale
+                    ttl, swr = None, None                  # deps defaults (30 min)
 
                 self._cache_set(
                     key,

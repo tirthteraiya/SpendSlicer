@@ -130,3 +130,24 @@ def test_to_grouped_cost_list_preserves_order_and_totals():
     assert [g.primary_key() for g in groups] == ["Amazon EC2", "Amazon S3"]
     assert groups[0].value.amount_usd == pytest.approx(3.05)
     assert groups[1].value.amount_usd == pytest.approx(0.42)
+
+
+def test_profiles_on_same_account_share_one_ce_fetch():
+    """"default" and "prod" pointing at one account must not pay twice."""
+    cache: dict = {}
+    ce = MagicMock()
+    ce.daily_service_matrix.return_value = _fake_ce_response()
+    w = W(dt.date(2026, 5, 18), dt.date(2026, 5, 20))
+    store = CostStore(ce_client=ce, cache_get=cache.get, cache_set=lambda k, v, **kw: cache.__setitem__(k, v))
+    store.get_matrix("default", "acct1", w, spec="pre_credit_gross")
+    store.get_matrix("prod", "acct1", w, spec="pre_credit_gross")
+    assert ce.daily_service_matrix.call_count == 1
+
+
+def test_monthly_trend_rolls_days_into_months():
+    m = DailyServiceMatrix.from_ce(_fake_ce_response() + [
+        {"TimePeriod": {"Start": "2026-06-01", "End": "2026-06-02"}, "Groups": []},
+    ])
+    labels, values = m.monthly_trend()
+    assert labels == ["2026-05", "2026-06"]
+    assert values == pytest.approx([m.total(), 0.0])

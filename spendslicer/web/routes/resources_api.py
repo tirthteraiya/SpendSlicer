@@ -6,12 +6,12 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
 from spendslicer.core.filters import pre_credit_gross
-from spendslicer.resources import enumerate_all
 from spendslicer.resources.runner import ALL_REGIONS
 from spendslicer.web.context import friendly_error
 from spendslicer.web.deps import (
     cache_get,
     cache_get_swr,
+    cache_ns,
     cache_set,
     cold_single_flight,
     get_ce_client,
@@ -90,25 +90,20 @@ def build_resources_ctx(profile: str, period: str, region: str) -> dict:
         # user that results may be incomplete instead of silently showing low totals.
         attr_errors: list[dict] = []
 
-        # Try CostSource path: CUR when available, describe-based fallback otherwise.
-        try:
-            account_id = session.client("sts").get_caller_identity()["Account"]
-            src = get_cost_source(session)
-            # CostSource handles CUR-first / CE-describe fallback internally.
-            # Both paths return the same simplified dict shape, so always normalize.
-            raw_rows = src.attribute_resources(
-                account_id, window, session=session, spec=spec,
-                errors=attr_errors, region=region,
-            )
-            ctx["rows"] = [_normalize_cur_row(r) for r in raw_rows]
-            ctx["attribution_source"] = src.attribution_source(
-                account_id, window, region=region
-            )
-        except Exception:
-            # Any error in CostSource wiring falls back to existing describe path.
-            rows = enumerate_all(session, window, region=region, spec=spec, errors=attr_errors)
-            ctx["rows"] = [r.to_dict() for r in rows]
-            ctx["attribution_source"] = "estimated"
+        # CUR when available, describe-based attribution otherwise. No blanket
+        # fallback to a second enumerate_all: when this failed it was usually
+        # inside the enumeration itself, and re-running it re-billed every
+        # per-region CE call only to fail the same way.
+        account_id = session.client("sts").get_caller_identity()["Account"]
+        src = get_cost_source(session)
+        raw_rows = src.attribute_resources(
+            account_id, window, session=session, spec=spec,
+            errors=attr_errors, region=region,
+        )
+        ctx["rows"] = [_normalize_cur_row(r) for r in raw_rows]
+        ctx["attribution_source"] = src.attribution_source(
+            account_id, window, region=region
+        )
 
         if attr_errors:
             ctx["incomplete"] = True
@@ -134,16 +129,17 @@ def build_resources_ctx(profile: str, period: str, region: str) -> dict:
             reverse=True,
         )
 
-        ce = get_ce_client(session)
         # Reconcile like-for-like: a region-filtered view must compare against
         # the REGION-scoped CE total, not the account-wide one (which reported
-        # the rest of the world as "unattributed").
-        totals_spec = spec
-        if region != ALL_REGIONS:
+        # the rest of the world as "unattributed"). The all-regions total is the
+        # cached matrix the cost pages already paid for.
+        if region == ALL_REGIONS:
+            ctx["ce_total"] = src.get_matrix(profile, account_id, window, spec).total()
+        else:
             from dataclasses import replace as _dc_replace
-            totals_spec = _dc_replace(spec, region=region)
-        ce_total_cv = ce.get_total_cost(window, spec=totals_spec)
-        ctx["ce_total"] = ce_total_cv.amount_usd
+            ctx["ce_total"] = get_ce_client(session).get_total_cost(
+                window, spec=_dc_replace(spec, region=region)
+            ).amount_usd
         # Drift may legitimately go NEGATIVE (attributed > CE total, e.g. an
         # attribution double count or a basis mismatch) — flooring at zero hid
         # exactly the failures this reconciliation exists to expose.
@@ -193,7 +189,7 @@ def api_resources_data(
     service: str = Query(""),
     limit: int = Query(0),
 ):
-    ckey = f"resources:{profile}:{safe_period(period)}:{safe_region(region)}"
+    ckey = f"resources:{cache_ns(profile)}:{safe_period(period)}:{safe_region(region)}"
     cached, should_refresh = cache_get_swr(ckey)
     if cached is None:
         cached = cold_single_flight(
@@ -226,7 +222,7 @@ def api_resources_top_data(
     limit: int = Query(10),
 ):
     # Fast path for dashboard: never block first paint on full attribution scan.
-    ckey = f"resources:{profile}:{safe_period(period)}:{safe_region(region)}"
+    ckey = f"resources:{cache_ns(profile)}:{safe_period(period)}:{safe_region(region)}"
     cached, should_refresh = cache_get_swr(ckey)
     if cached is None:
         schedule_refresh(
@@ -278,7 +274,7 @@ def api_resources_services_data(
     period: str = Query("mtd"),
     region: str = Query(ALL_REGIONS),
 ):
-    ckey = f"resources:{profile}:{safe_period(period)}:{safe_region(region)}"
+    ckey = f"resources:{cache_ns(profile)}:{safe_period(period)}:{safe_region(region)}"
     cached = cache_get(ckey)
     if not cached:
         cached = build_resources_ctx(profile, period, region)
