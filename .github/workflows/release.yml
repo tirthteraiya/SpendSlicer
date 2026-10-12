@@ -176,3 +176,23 @@ jobs:
             SpendSlicer runs entirely on your machine against your own AWS CLI
             profiles. No account linking, no telemetry, no cost data leaving
             your laptop.
+
+  pypi:
+    name: Publish to PyPI
+    # Tag pushes only; a manual re-run of the desktop build must not re-upload.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # trusted publishing — no API token stored in the repo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tag must match spendslicer.__version__
+        run: |
+          v=$(python -c "import re;print(re.search(r'__version__\s*=\s*\"(.+?)\"', open('spendslicer/__init__.py').read())[1])")
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != version $v"; exit 1; }
+      - run: python -m pip install build && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1

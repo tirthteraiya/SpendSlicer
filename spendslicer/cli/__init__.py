@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
         from spendslicer.doctor import main as doctor_main
         return doctor_main(args[1:])
     print(_USAGE)
-    return 1
+    return 0 if args[:1] in (["-h"], ["--help"]) else 1
 
 
 if __name__ == "__main__":

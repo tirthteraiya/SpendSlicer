@@ -64,7 +64,11 @@ class SqliteCache:
                 with contextlib.suppress(Exception):
                     old.close()
                 self._local.conn = None
-            self._path.unlink(missing_ok=True)
+            # Windows refuses to delete a file another process holds open;
+            # don't let that block startup.
+            for suffix in ("", "-wal", "-shm"):
+                with contextlib.suppress(OSError):
+                    Path(f"{self._path}{suffix}").unlink(missing_ok=True)
             conn = self._get_conn()
             conn.executescript(_SCHEMA)
             conn.commit()

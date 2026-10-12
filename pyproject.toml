@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ dynamic = ["version"]
 description = "Self-hosted AWS cost visibility and waste audit — runs on your machine, against your own AWS credentials."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Tirth Teraiya" }]
 keywords = ["aws", "cost", "finops", "billing", "audit", "cloud", "devops"]
 classifiers = [
@@ -17,7 +18,6 @@ classifiers = [
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -25,19 +25,21 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
     "boto3>=1.34",
     "botocore>=1.34",
-]
-
-[project.optional-dependencies]
-web = [
+    # The dashboard is the product; without these `spendslicer-web` died with
+    # ModuleNotFoundError on a plain `pip install spendslicer`.
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
 ]
+
+[project.optional-dependencies]
+web = []  # kept so existing `spendslicer[web]` installs keep working
 exporters = [
     "fpdf2>=2.8",
     "slack-sdk>=3.27",

@@ -135,6 +135,14 @@ def main() -> int:
         format="%(levelname)s %(name)s: %(message)s",
     )
 
+    if sys.platform == "darwin":
+        # An app opened from Finder gets PATH=/usr/bin:/bin:/usr/sbin:/sbin, so
+        # a profile whose credential_process is a Homebrew tool (aws-vault,
+        # granted, 1Password's op) fails here while working in the terminal.
+        os.environ["PATH"] = os.pathsep.join(
+            [os.environ.get("PATH", ""), "/opt/homebrew/bin", "/usr/local/bin"]
+        )
+
     host = "127.0.0.1"
     port = int(os.environ.get("SPENDSLICER_PORT") or 0) or _free_port()
 
@@ -147,10 +155,12 @@ def main() -> int:
 
     base = f"http://{host}:{port}"
     if not _wait_until_serving(f"{base}/app", token, _STARTUP_TIMEOUT_SECONDS):
-        sys.stderr.write(
-            f"SpendSlicer: the local server did not start within "
-            f"{_STARTUP_TIMEOUT_SECONDS:.0f}s.\n"
-        )
+        # Windowed builds have sys.stderr = None; writing to it would crash.
+        if sys.stderr:
+            sys.stderr.write(
+                f"SpendSlicer: the local server did not start within "
+                f"{_STARTUP_TIMEOUT_SECONDS:.0f}s.\n"
+            )
         return 1
 
     app_url = f"{base}/app?token={token}"

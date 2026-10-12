@@ -113,6 +113,10 @@ def friendly_error(exc: Exception) -> str:
             "~/.aws/credentials. Run `aws configure` to create it, or pick "
             "another profile."
         )
+    # SSOTokenLoadError ("Token for x does not exist") matched nothing above
+    # and fell through to the generic message.
+    if "SSO" in name:
+        return "AWS SSO session missing or expired. Run `aws sso login --profile <name>`, then reload."
     if "ExpiredToken" in msg or "expired" in msg.lower():
         return "AWS session token expired. Re-authenticate and try again."
     if "AccessDenied" in msg or "not authorized" in msg.lower():
