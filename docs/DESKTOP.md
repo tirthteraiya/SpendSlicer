@@ -9,7 +9,7 @@ macOS, WebView2 on Windows).
 ## Install
 
 Download the file for your platform from
-[Releases](https://github.com/CheeseGOD777/spendslicer/releases).
+[Releases](https://github.com/tirthteraiya/SpendSlicer/releases).
 
 | Platform | File | Notes |
 | --- | --- | --- |
@@ -84,16 +84,14 @@ never writes to either.
 | | Desktop app | `spendslicer-web` |
 | --- | --- | --- |
 | Port | OS-assigned, ephemeral | 8080 |
-| Auth | Random token minted per launch | None by default |
+| Auth | Random token minted per launch | Random token minted per launch |
 | Window | Native webview | Your browser |
 | PDF export | Works | Works |
 
-The per-launch token matters more than it might look. The server's CSRF check
-only guards state-changing methods, so on a plain unauthenticated loopback bind
-any web page you happen to have open could fire cross-origin `GET`s at the port.
-CORS stops that page reading the response, but it does **not** stop the request
-— and each one spends real Cost Explorer money. The desktop build closes that
-by requiring a token nothing else knows.
+Both launchers require a token for AWS endpoints, including `GET` requests that
+can spend Cost Explorer money. The desktop app passes the protected link to its
+window automatically; `spendslicer-web` prints it in the terminal for you to
+open. Every request also validates its hostname to prevent DNS rebinding.
 
 ---
 
@@ -110,8 +108,8 @@ Building locally produces an app with no quarantine flag and no warnings.
 ### macOS
 
 ```bash
-git clone https://github.com/CheeseGOD777/spendslicer.git
-cd spendslicer
+git clone https://github.com/tirthteraiya/SpendSlicer.git
+cd SpendSlicer
 
 python3 -m venv venv && source venv/bin/activate
 pip install -e ".[web,cur,exporters,desktop,build]" Pillow
@@ -125,8 +123,8 @@ Output: `dist/SpendSlicer-<version>-macos-<arch>.dmg`, plus
 ### Windows
 
 ```powershell
-git clone https://github.com/CheeseGOD777/spendslicer.git
-cd spendslicer
+git clone https://github.com/tirthteraiya/SpendSlicer.git
+cd SpendSlicer
 
 python -m venv venv
 venv\Scripts\activate

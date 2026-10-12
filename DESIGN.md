@@ -2,6 +2,9 @@
 name: SpendSlicer
 description: A terminus departure board for AWS spend — one authoritative figure, a queue beneath it, and a legend that defines every mark.
 colors:
+  brand-lime: "#B9F467"
+  brand-lime-hover: "#A9E457"
+  brand-ink: "#0F1318"
   board: "#E7EAEF"
   board-2: "#DCE0E7"
   panel: "#FFFFFF"
@@ -172,6 +175,24 @@ components:
 ---
 
 # Design System: SpendSlicer
+
+## Final brand identity
+
+The approved Dollar Slice mark combines a dollar sign, an S, and one diagonal cut.
+Production assets and typography live in `branding/kit/`; `branding/kit/index.html`
+is the visual usage guide. The logo uses Manrope 800 with −0.028em tracking.
+The dashboard's existing Manrope and JetBrains Mono roles remain authoritative.
+
+**Slice Lime** (`--brand-lime`, `#B9F467`) appears only in the identity tile and
+marketing primary action. Its foreground is charcoal (`--brand-ink`, `#0F1318`),
+never white. It is not a financial status or chart-series color. The dashboard
+keeps ink controls, a light canvas, and its existing exact/caution/drift semantics.
+The One Signal Rule and Livery Containment Rule still apply to operational data.
+White, charcoal, and lime logo variants share one approved alpha silhouette.
+The symbol is a high-resolution raster; outlined wordmarks are vector lettering.
+The standalone identity guide uses a presentation scale of 13, 15, 16, 20, 24,
+36, and 52px; its app-icon preview has a 34px presentation mask. These are
+guide-only applications, not changes to the dashboard's type or radius scale.
 
 ## Overview
 
@@ -432,6 +453,17 @@ letters stay fixed. A 1px 50%-opacity seam across each cell is the split in
 split-flap. The full value is exposed to assistive technology as one string so it
 is never read out digit by digit. Under `prefers-reduced-motion` the transition
 and the seam are both dropped.
+
+It rolls on the board's headline facts: the display figure, the board aside
+(previous period, forecast), and the three cross-check values. Cells are keyed
+by place value from the right, so a figure that gains a digit still rolls every
+existing cell. A period or profile switch never blanks the board: it holds its
+last figures at 40% opacity with `aria-busy` while the cue strip says "Period
+changed", then the new figures roll in at full ink and the departure rows' mass
+bars slide to their new widths. Skeletons appear only on a first load with
+nothing to hold. The dim stays under reduced motion, because it is state, not
+movement. The seam belongs to the display figure only; at cross-check and aside
+sizes it would read as a strikethrough.
 
 ### Banners
 

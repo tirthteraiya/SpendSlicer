@@ -4,7 +4,7 @@
 
 Please do not open a public issue. Use GitHub's private reporting:
 
-**[Report a vulnerability](https://github.com/CheeseGOD777/spendslicer/security/advisories/new)**
+**[Report a vulnerability](https://github.com/tirthteraiya/SpendSlicer/security/advisories/new)**
 
 Include what the issue is, how to reproduce it, and what an attacker gets. A
 reply should come within a few days. This is a small volunteer project — there
@@ -51,18 +51,22 @@ can read the response.
 - **Loopback bind by default.** `127.0.0.1` only.
 - **Desktop builds** mint a random token per launch and bind an OS-assigned
   port. Nothing else on the machine can drive them.
-- **Self-hosted** runs are unauthenticated on loopback by default. That is a
-  deliberate trade for zero-config laptop use, and it is where the residual
-  risk lives.
+- **Web launches** generate a random token and print a protected dashboard
+  link. API requests without the token are rejected, including `GET` requests.
+- **Every request validates its Host header**, including HTML and static
+  assets, so a foreign hostname cannot use DNS rebinding to read the dashboard.
+- **Local browser reconnection** only discloses auto-generated tokens to a
+  loopback client with `Sec-Fetch-Site: same-origin` and a custom request header.
+  A foreign site cannot send that header without a CORS preflight, which is not
+  allowed. Remote clients and user-configured tokens are excluded.
 
-The residual risk, stated plainly: with no token set, a web page open in your
-browser can issue cross-origin `GET` requests to `127.0.0.1:8080` and cause
-Cost Explorer spend. The browser's same-origin policy stops that page *reading*
-the reply, and the Origin allow-list blocks state-changing methods — but the
-GET still executes and still bills.
+Keep the protected dashboard link private. The frontend removes the token from
+the visible URL and keeps it in session storage; the web launcher disables
+request access logs. A process with access to your terminal or browser session
+can still recover it, which falls under the compromised-machine limit below.
 
-**If you bind anything other than loopback, set `SPENDSLICER_AUTH_TOKEN`.** The
-server logs a warning at startup when it is unset.
+For remote deployments, set `SPENDSLICER_ALLOWED_HOSTS` to the client-facing
+hostname and configure a persistent token:
 
 ```bash
 export SPENDSLICER_AUTH_TOKEN="$(openssl rand -base64 32)"
@@ -104,5 +108,5 @@ Only the latest minor release gets security fixes.
 ## Dependencies
 
 Runtime dependencies are deliberately few: boto3/botocore, FastAPI, uvicorn,
-and optionally duckdb/pyarrow for CUR and pywebview for the desktop shell. Each
+fpdf2, and optionally duckdb for CUR and pywebview for the desktop shell. Each
 one is a supply-chain surface, so additions are weighed rather than assumed.

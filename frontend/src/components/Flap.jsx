@@ -40,6 +40,10 @@ function Cell({ digit, delay }) {
 export function Flap({ text, className = "" }) {
   const chars = String(text ?? "").split("");
   let digitIndex = 0;
+  // Cells are keyed by place value (counted from the right), so the ones digit
+  // stays the ones digit when a figure gains a digit: $9,310 -> $10,050 rolls
+  // every existing cell instead of remounting them all and skipping the motion.
+  const place = (i) => chars.length - i;
   return (
     <span className={`flap ${className}`.trim()}>
       <span className="sr-only">{String(text ?? "")}</span>
@@ -47,10 +51,10 @@ export function Flap({ text, className = "" }) {
         {chars.map((c, i) => {
           if (c >= "0" && c <= "9") {
             const d = digitIndex++;
-            return <Cell key={`d${i}`} digit={c} delay={d * 34} />;
+            return <Cell key={`d${place(i)}`} digit={c} delay={d * 34} />;
           }
           return (
-            <span className="flap-fixed" key={`f${i}`}>
+            <span className="flap-fixed" key={`f${place(i)}`}>
               {c}
             </span>
           );

@@ -1,3 +1,5 @@
+import brandMark from "../../../branding/kit/mark-ui.png";
+
 /* Authored icon set — one family, 1.5px stroke on a 20px box, currentColor.
    No emoji, no unicode glyphs, no icon dependency. */
 
@@ -95,11 +97,11 @@ export const IconSearch = (p) => (
   <S {...p}><circle cx="8.75" cy="8.75" r="5.25" /><path d="M12.75 12.75 17 17" /></S>
 );
 
-/* The SpendSlicer mark: a board figure sliced. Drawn, not a monogram. */
-export const Mark = ({ size = 19 }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-    <rect x="2" y="3" width="16" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
-    <path d="M5.5 12.5 9 7l2.5 4L14.5 6.5" stroke="currentColor" strokeWidth="1.6"
-          strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+/* The approved dollar-slice silhouette; alpha masking keeps every color identical. */
+export const Mark = ({ size = 28 }) => (
+  <span className="brand-symbol" aria-hidden="true" style={{
+    width: size, height: size, backgroundColor: "currentColor",
+    mask: `url(${brandMark}) center / contain no-repeat`,
+    WebkitMask: `url(${brandMark}) center / contain no-repeat`,
+  }} />
 );

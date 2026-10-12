@@ -135,7 +135,7 @@ See [SECURITY.md](../SECURITY.md) for the full threat model.
 
 ## Testing
 
-190 Python tests plus a frontend suite, run against Python 3.10–3.13 on every
+190 Python tests plus a frontend suite, run against Python 3.10–3.14 on every
 push. AWS is mocked with `moto` and `unittest.mock`; no test touches a real
 account. The bulk of the coverage sits on the parts most likely to be quietly
 wrong: attribution math, rescaling guards, UTC window boundaries, cache

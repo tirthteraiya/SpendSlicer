@@ -5,9 +5,11 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import secrets
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 
@@ -21,12 +23,23 @@ log = logging.getLogger(__name__)
 
 
 def _auth_token() -> str:
-    """Shared-secret token; empty/unset means auth is disabled (localhost UX)."""
+    """Shared-secret token configured by the user or generated at startup."""
     return (os.environ.get("SPENDSLICER_AUTH_TOKEN") or "").strip()
 
 
+def _ensure_auth_token() -> str:
+    token = _auth_token()
+    if not token:
+        token = secrets.token_urlsafe(32)
+        # Inherit this marker in uvicorn reload workers, without treating a
+        # user-configured token as one the local browser may discover.
+        os.environ["_SPENDSLICER_LOCAL_TOKEN"] = token
+    os.environ["SPENDSLICER_AUTH_TOKEN"] = token
+    return token
+
+
 def _allowed_hosts() -> set[str]:
-    """Hosts this server is willing to answer state-changing requests for.
+    """Hosts this server is willing to answer requests for.
 
     Defaults to loopback only (the documented bind target). Override with
     SPENDSLICER_ALLOWED_HOSTS (comma-separated) for non-loopback deployments. Used as
@@ -58,7 +71,7 @@ def _has_valid_token(request: Request) -> bool:
 # Static is mounted (not subject to app-level dependencies) but listed for clarity.
 _OPEN_PREFIXES = ("/static",)
 # Exact paths that just serve HTML shells / non-AWS context — open even when gated.
-_OPEN_PATHS = {"/", "/app"}
+_OPEN_PATHS = {"/", "/app", "/api/auth/local"}
 
 
 def _is_open_path(path: str) -> bool:
@@ -98,14 +111,16 @@ def _origin_host_allowed(request: Request) -> bool:
 
 
 async def require_auth(request: Request) -> None:
-    """Global dependency: token auth (when configured) + CSRF Origin check.
+    """Global dependency: host validation, token auth and CSRF Origin check.
 
     - Token (SPENDSLICER_AUTH_TOKEN) is required on every money-spending route via the
-      X-SpendSlicer-Token header or `token` query param; mismatch -> 401. When unset,
-      auth is disabled to preserve the zero-config localhost experience.
+      X-SpendSlicer-Token header or `token` query param; mismatch -> 401.
     - State-changing POSTs additionally enforce an Origin/Referer allow-list as
-      defense-in-depth (active even when no token is configured).
+      defense-in-depth.
     """
+    if _host_of(request.headers.get("host") or "") not in _allowed_hosts():
+        raise HTTPException(status_code=403, detail="Host not allowed.")
+
     path = request.url.path
     if _is_open_path(path):
         return
@@ -116,21 +131,12 @@ async def require_auth(request: Request) -> None:
 
     token = _auth_token()
     if not token:
-        return  # auth disabled
+        raise HTTPException(status_code=401, detail="Invalid or missing API token.")
 
     presented = request.headers.get("x-spendslicer-token") or request.query_params.get("token") or ""
     # Constant-time compare so a timing side-channel can't recover the token.
     if not hmac.compare_digest(presented, token):
         raise HTTPException(status_code=401, detail="Invalid or missing API token.")
-
-def _warn_if_unauthenticated() -> None:
-    if not _auth_token():
-        log.warning(
-            "SPENDSLICER_AUTH_TOKEN is not set — server is UNAUTHENTICATED. "
-            "Anyone who can reach this port can spend real AWS money via Cost Explorer. "
-            "Set SPENDSLICER_AUTH_TOKEN to require a token (X-SpendSlicer-Token header or ?token=...)."
-        )
-
 
 def _kick_prewarm() -> None:
     # get_profile_choices() calls STS (and IAM) once per local AWS profile.
@@ -223,7 +229,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     six hours in ``time.sleep``, so a packaged desktop build could hang on
     quit. The stop Event lets it exit promptly.
     """
-    _warn_if_unauthenticated()
+    _ensure_auth_token()
     _kick_prewarm()
     stop = threading.Event()
     _start_cur_worker(stop)
@@ -262,6 +268,10 @@ async def security_headers(request: Request, call_next):
     React bundle sets inline styles, so it needs verifying in a real browser
     before it ships rather than being asserted here.
     """
+    if _host_of(request.headers.get("host") or "") not in _allowed_hosts():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"detail": "Host not allowed."}, status_code=403)
     response = await call_next(request)
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -279,6 +289,27 @@ app.include_router(audit_api.router)
 app.include_router(export_api.router)
 
 
+@app.get("/api/auth/local")
+def local_browser_auth(request: Request):
+    """Reconnect the local UI without handing a token to another website."""
+    from fastapi.responses import JSONResponse
+
+    token = _auth_token()
+    generated_token = os.environ.get("_SPENDSLICER_LOCAL_TOKEN", "")
+    if (
+        not request.client
+        or request.client.host not in {"127.0.0.1", "::1"}
+        or request.headers.get("sec-fetch-site") != "same-origin"
+        or request.headers.get("x-spendslicer-local-ui") != "1"
+        or ((request.headers.get("origin") or request.headers.get("referer")) and not _origin_host_allowed(request))
+        or not token
+        or not generated_token
+        or not hmac.compare_digest(token, generated_token)
+    ):
+        raise HTTPException(status_code=403, detail="Local browser connection required.")
+    return JSONResponse({"token": token}, headers={"Cache-Control": "no-store"})
+
+
 def serve(host: str = "127.0.0.1", port: int = 8080, reload: bool = False) -> None:
     """Run the dashboard under uvicorn.
 
@@ -288,11 +319,17 @@ def serve(host: str = "127.0.0.1", port: int = 8080, reload: bool = False) -> No
     """
     import uvicorn
 
+    token = _ensure_auth_token()
+    browser_host = "127.0.0.1" if host == "0.0.0.0" else "[::1]" if host == "::" else host
+    if ":" in browser_host and not browser_host.startswith("["):
+        browser_host = f"[{browser_host}]"
+    print(f"Open SpendSlicer: http://{browser_host}:{port}/app?token={quote(token, safe='')}", flush=True)
+
     if reload:
         # The import-string form is required for reload to work at all.
-        uvicorn.run("spendslicer.web.app:app", host=host, port=port, reload=True)
+        uvicorn.run("spendslicer.web.app:app", host=host, port=port, reload=True, access_log=False)
     else:
-        uvicorn.run(app, host=host, port=port)
+        uvicorn.run(app, host=host, port=port, access_log=False)
 
 
 def main() -> None:

@@ -36,6 +36,20 @@ describe("getJson backend-error handling", () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("explains a 401 and does not hide it behind stale cache", async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ total_mtd: 7 }))
+      .mockResolvedValueOnce({ ok: false, status: 401, headers: { get: () => "0" } })
+      .mockResolvedValueOnce({ ok: false, status: 403 });
+    const { api } = await import("./api");
+    await api.summary("q", "mtd");
+    // Past the fresh TTL but inside stale-while-revalidate: a network failure
+    // here would fall back to the cached copy; a 401 must not.
+    const later = Date.now() + 31 * 60 * 1000;
+    vi.spyOn(Date, "now").mockReturnValue(later);
+    await expect(api.summary("q", "mtd")).rejects.toThrow(/link printed in the terminal/);
+  });
+
   it("caches clean payloads as before", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ total_mtd: 7 }));
     const { api } = await import("./api");
@@ -43,5 +57,32 @@ describe("getJson backend-error handling", () => {
     const again = await api.summary("p", "mtd");
     expect(again.meta.fromCache).toBe("fresh");
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconnects a bare dashboard and loads the account choices", async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce(jsonResponse({ token: "new-run-token" }))
+      .mockResolvedValueOnce(jsonResponse({ profiles: ["default", "prod"], profile_choices: [{ profile: "prod", label: "Production" }] }))
+      .mockResolvedValueOnce(jsonResponse({ total_mtd: 42 }));
+    const { api } = await import("./api");
+    const context = await api.context("default", "mtd");
+    expect(context.data.profiles).toContain("prod");
+    expect(globalThis.fetch.mock.calls[1][0]).toBe("/api/auth/local");
+    expect(globalThis.fetch.mock.calls[1][1].headers).toEqual({ "X-SpendSlicer-Local-UI": "1" });
+    expect(globalThis.fetch.mock.calls[2][1].headers["X-SpendSlicer-Token"]).toBe("new-run-token");
+    const switched = await api.summary("prod", "mtd");
+    expect(switched.data.total_mtd).toBe(42);
+    expect(globalThis.fetch.mock.calls[3][0]).toContain("profile=prod");
+  });
+
+  it("stops after one retry if reconnection still receives 401", async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce(jsonResponse({ token: "expired-again" }))
+      .mockResolvedValueOnce({ ok: false, status: 401 });
+    const { api } = await import("./api");
+    await expect(api.context("other", "mtd")).rejects.toThrow(/link printed in the terminal/);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(3);
   });
 });

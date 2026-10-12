@@ -12,11 +12,13 @@ on:
     paths:
       - "landing/**"
       - "frontend/src/**"
+      - "branding/kit/**"
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
       - "landing/**"
       - "frontend/src/**"
+      - "branding/kit/**"
   workflow_dispatch:
 
 concurrency:

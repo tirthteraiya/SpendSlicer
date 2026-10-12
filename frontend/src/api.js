@@ -1,4 +1,4 @@
-import { authHeaders } from "./lib/auth";
+import { authHeaders, reconnectLocal } from "./lib/auth";
 import { readSwr, writeSwr } from "./lib/swrCache";
 
 const toParams = (params) => {
@@ -11,6 +11,23 @@ const toParams = (params) => {
 
 const cacheKey = (path, params) => `${path}?${toParams(params)}`;
 
+// Every launch mints a new token, so a 401 almost always means this tab holds
+// the previous run's token (or none). Say how to recover instead of "401".
+const AUTH_HELP =
+  "This tab is not signed in to the running server. Each launch creates a new access token: " +
+  "open the \u201cOpen SpendSlicer\u201d link printed in the terminal.";
+const authError = () => Object.assign(new Error(AUTH_HELP), { auth: true });
+
+const fetchWithAuth = async (url, options = {}) => {
+  const request = () => fetch(url, {
+    ...options,
+    headers: { ...options.headers, ...authHeaders() },
+  });
+  let res = await request();
+  if (res.status === 401 && await reconnectLocal()) res = await request();
+  return res;
+};
+
 const getJson = async (path, params = {}, opts = {}) => {
   const key = cacheKey(path, params);
   const cached = readSwr(key);
@@ -20,10 +37,11 @@ const getJson = async (path, params = {}, opts = {}) => {
 
   const qs = toParams(params);
   try {
-    const res = await fetch(`${path}${qs ? `?${qs}` : ""}`, {
+    const res = await fetchWithAuth(`${path}${qs ? `?${qs}` : ""}`, {
       signal: opts.signal,
       headers: authHeaders(),
     });
+    if (res.status === 401) throw authError();
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
     const data = await res.json();
     // Sanitize header-derived numbers: a malformed header (proxy mangling,
@@ -47,7 +65,7 @@ const getJson = async (path, params = {}, opts = {}) => {
     if (!data?.warming && !backendError) writeSwr(key, data);
     return { data, meta };
   } catch (err) {
-    if (err?.name === "AbortError") throw err;
+    if (err?.name === "AbortError" || err?.auth) throw err;
     if (cached) return { data: cached.value, meta: { ceCalls: 0, ceCostUsd: 0, fromCache: "stale", backendError: null } };
     throw err;
   }
@@ -70,7 +88,8 @@ export const api = {
   budgets: (profile, opts) => getJson("/api/budgets/data", { profile }, opts),
   downloadExport: async (profile, period, fmt, name = "") => {
     const qs = toParams({ profile, period, fmt, name });
-    const res = await fetch(`/api/export/download?${qs}`, { headers: authHeaders() });
+    const res = await fetchWithAuth(`/api/export/download?${qs}`);
+    if (res.status === 401) throw authError();
     if (!res.ok) {
       let msg = `Export failed: ${res.status}`;
       try {
@@ -95,10 +114,11 @@ export const api = {
   },
   runExport: async (profile, period, fmt, outputDir = "./exports") => {
     const qs = toParams({ profile, period, fmt, output_dir: outputDir });
-    const res = await fetch(`/api/export/run?${qs}`, {
+    const res = await fetchWithAuth(`/api/export/run?${qs}`, {
       method: "POST",
       headers: authHeaders(),
     });
+    if (res.status === 401) throw authError();
     if (!res.ok) throw new Error(`Export failed: ${res.status}`);
     return res.json();
   },

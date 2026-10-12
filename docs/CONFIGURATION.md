@@ -8,7 +8,7 @@ out of the box.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `SPENDSLICER_HOST` | `127.0.0.1` | Bind address. **Do not change this without also setting `SPENDSLICER_AUTH_TOKEN`.** |
+| `SPENDSLICER_HOST` | `127.0.0.1` | Bind address. For remote access, configure `SPENDSLICER_ALLOWED_HOSTS` and a persistent `SPENDSLICER_AUTH_TOKEN`. |
 | `SPENDSLICER_PORT` | `8080` | Bind port. The desktop app ignores this and asks the OS for a free port unless you set it explicitly. |
 | `SPENDSLICER_RELOAD` | `0` | `1` enables uvicorn autoreload. Development only — it re-execs the process and breaks frozen builds. |
 | `SPENDSLICER_LOG_LEVEL` | `warning` | Standard log levels. `debug` is useful when diagnosing AWS call failures. |
@@ -17,13 +17,21 @@ out of the box.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `SPENDSLICER_AUTH_TOKEN` | *(unset)* | Shared secret required on every money-spending route, via the `X-SpendSlicer-Token` header or a `?token=` query parameter. Unset means auth is off. |
-| `SPENDSLICER_ALLOWED_HOSTS` | `localhost,127.0.0.1,::1` | Comma-separated hosts the server will answer state-changing requests for. Anti-DNS-rebinding and CSRF allow-list. |
+| `SPENDSLICER_AUTH_TOKEN` | *(generated per launch)* | Shared secret required on every money-spending route, via the `X-SpendSlicer-Token` header or a `?token=` query parameter. Set it to reuse a persistent token. |
+| `SPENDSLICER_ALLOWED_HOSTS` | `localhost,127.0.0.1,::1` | Comma-separated hosts accepted on every request and for the Origin/Referer check on state-changing requests. |
 
-Auth is off by default so that a laptop-local install needs zero setup. The
-moment you bind anything other than loopback, set a token — the server logs a
-warning at startup if you haven't, because an open port here spends real money,
-not just leaks data.
+The web launcher generates a random token and prints a protected dashboard link
+in the terminal. Open that link; the dashboard captures the token, removes it
+from the visible URL, and sends it with API requests. Access logs are disabled
+by the launcher so the token is not recorded in request logs. Keep the printed
+link private. On the default local web launch, `/app` can also reconnect
+automatically: the browser obtains the generated token through a loopback-only,
+same-origin handshake. This also repairs an old tab after a server restart.
+Remote browsers and explicitly configured tokens still require the protected
+link; the handshake never discloses a user-configured token.
+
+For remote access, configure a persistent token and allow the hostname used
+by clients:
 
 ```bash
 export SPENDSLICER_AUTH_TOKEN="$(openssl rand -base64 32)"
@@ -32,7 +40,9 @@ export SPENDSLICER_ALLOWED_HOSTS=spendslicer.internal.example.com
 spendslicer-web
 ```
 
-The desktop builds set a fresh random token on every launch automatically.
+The desktop builds also generate a token and pass the protected link directly
+to the app window. When starting with `uvicorn spendslicer.web.app:app`, set
+`SPENDSLICER_AUTH_TOKEN` yourself and open `/app?token=<your-token>`.
 
 ## Caching and Cost Explorer spend
 

@@ -1,5 +1,7 @@
 # SpendSlicer
 
+<p><img src="https://raw.githubusercontent.com/tirthteraiya/SpendSlicer/main/branding/kit/lockup-ink.svg" alt="SpendSlicer" width="360"></p>
+
 **Self-hosted AWS cost visibility that runs on your laptop.** Point it at your
 existing AWS CLI profiles and get named-resource cost attribution, a waste
 radar, and numbers that reconcile against the Billing console.
@@ -7,13 +9,16 @@ radar, and numbers that reconcile against the Billing console.
 No account linking. No agent. No telemetry. Every AWS call is made from your
 machine with your own credentials, and no cost data ever leaves it.
 
-[![CI](https://github.com/CheeseGOD777/spendslicer/actions/workflows/ci.yml/badge.svg)](https://github.com/CheeseGOD777/spendslicer/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/tirthteraiya/SpendSlicer/actions/workflows/ci.yml/badge.svg)](https://github.com/tirthteraiya/SpendSlicer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/tirthteraiya/SpendSlicer/blob/main/LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
 ---
 
 ## Why this exists
+
+The [brand kit](branding/kit/README.md) includes the final logo, outlined wordmarks,
+desktop icons, typography, color palette, and a local visual guide.
 
 The AWS Billing console tells you that `t4g.small · 500 hrs` cost $18.40. It
 does not tell you *which instance*, what it was named, or whether it has been
@@ -40,7 +45,7 @@ This is the part most cost tools are vague about, so to be explicit:
 | --- | --- |
 | Service totals | Cost Explorer `GetCostAndUsage`. Ground truth — matches the console. |
 | Per-resource cost | **Estimated.** Cost Explorer `USAGE_TYPE` buckets, split across the resources in that bucket by running hours and list price, then rescaled to match the service total. |
-| Per-resource cost, with CUR enabled | **Exact.** Real billed line items from your Cost and Usage Report. See [docs/CUR.md](docs/CUR.md). |
+| Per-resource cost, with CUR enabled | **Exact.** Real billed line items from your Cost and Usage Report. See [docs/CUR.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/CUR.md). |
 
 So: **service totals are exact, per-resource splits are estimates** unless you
 enable the CUR warehouse. SpendSlicer says which you are looking at rather than
@@ -66,7 +71,7 @@ default.
 
 ### Desktop app (easiest)
 
-Download from [Releases](https://github.com/CheeseGOD777/spendslicer/releases):
+Download from [Releases](https://github.com/tirthteraiya/SpendSlicer/releases):
 
 | Platform | File |
 | --- | --- |
@@ -77,24 +82,30 @@ Download from [Releases](https://github.com/CheeseGOD777/spendslicer/releases):
 > **These builds are not code-signed yet.** macOS will claim the app "is
 > damaged and can't be opened" — that is what Gatekeeper says about any
 > unsigned download, not a real problem with the file. Windows SmartScreen will
-> warn similarly. [docs/DESKTOP.md](docs/DESKTOP.md) has the one-line fix for
+> warn similarly. [docs/DESKTOP.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/DESKTOP.md) has the one-line fix for
 > each, and instructions for building it yourself if you would rather not trust
 > a binary.
 
 ### pip
 
 ```bash
-pip install "spendslicer[web,cur]"
-spendslicer-web           # http://127.0.0.1:8080/app
+pipx install spendslicer   # or: pip install spendslicer
+spendslicer-web            # open the protected dashboard link printed in the terminal
 ```
 
-The dashboard bundle ships inside the wheel, so Node.js is not required.
+The dashboard bundle and PDF export support ship with the package, so Node.js
+is not required. Each launch prints a dashboard link with a fresh access token;
+open that link to connect. Local browser tabs can also open `/app` directly and
+reconnect automatically after a server restart. For
+exact per-resource costs from the CUR warehouse, install the extra:
+`pipx install "spendslicer[cur]"`. Try it without installing anything:
+`uvx --from spendslicer spendslicer-web`.
 
 ### From source
 
 ```bash
-git clone https://github.com/CheeseGOD777/spendslicer.git
-cd spendslicer
+git clone https://github.com/tirthteraiya/SpendSlicer.git
+cd SpendSlicer
 ./run.sh                # Windows: run.bat
 ```
 
@@ -137,14 +148,14 @@ that fact rather than ignoring it.
 - Background refreshes are deduplicated per cache key and capped globally
 
 A typical dashboard session costs a few cents. Tune it with
-`SPENDSLICER_CACHE_TTL_SECONDS` — see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+`SPENDSLICER_CACHE_TTL_SECONDS` — see [docs/CONFIGURATION.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/CONFIGURATION.md).
 
 ---
 
 ## IAM permissions
 
 SpendSlicer is strictly read-only. It never creates, modifies, or deletes
-anything. The minimum policy is in [docs/IAM.md](docs/IAM.md), which lists
+anything. The minimum policy is in [docs/IAM.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/IAM.md), which lists
 every API call the code actually makes and which feature breaks without it.
 
 The short version: `ReadOnlyAccess` works, or attach the least-privilege policy
@@ -156,13 +167,13 @@ from that document.
 
 | Document | What's in it |
 | --- | --- |
-| [docs/DESKTOP.md](docs/DESKTOP.md) | Installing the unsigned builds; building your own |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Every environment variable |
-| [docs/IAM.md](docs/IAM.md) | Least-privilege policy, per-call breakdown |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How attribution works, module layout |
-| [docs/CUR.md](docs/CUR.md) | Optional CUR warehouse for exact line-item costs |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, tests, PR expectations |
-| [SECURITY.md](SECURITY.md) | Threat model, reporting a vulnerability |
+| [docs/DESKTOP.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/DESKTOP.md) | Installing the unsigned builds; building your own |
+| [docs/CONFIGURATION.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/CONFIGURATION.md) | Every environment variable |
+| [docs/IAM.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/IAM.md) | Least-privilege policy, per-call breakdown |
+| [docs/ARCHITECTURE.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/ARCHITECTURE.md) | How attribution works, module layout |
+| [docs/CUR.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/docs/CUR.md) | Optional CUR warehouse for exact line-item costs |
+| [CONTRIBUTING.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/CONTRIBUTING.md) | Dev setup, tests, PR expectations |
+| [SECURITY.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/SECURITY.md) | Threat model, reporting a vulnerability |
 
 ---
 
@@ -172,12 +183,13 @@ SpendSlicer binds to `127.0.0.1` and nothing else by default.
 
 - **Desktop builds** mint a random auth token per launch and bind an ephemeral
   port. Nothing else on the machine can drive them.
-- **Self-hosted** runs are unauthenticated on loopback by default, which is
-  fine on a laptop. If you bind any other interface, you **must** set
-  `SPENDSLICER_AUTH_TOKEN` — the server logs a loud warning if you don't.
+- **Web launches** also mint a random token by default and print the protected
+  dashboard link. A configured `SPENDSLICER_AUTH_TOKEN` is preserved.
+- Hosts are validated on every request. For a non-loopback deployment, set
+  `SPENDSLICER_ALLOWED_HOSTS` to the hostname you use to open the dashboard.
 
 Cost Explorer requests spend real money, so an open port is a financial
-exposure and not just a data one. [SECURITY.md](SECURITY.md) covers the full
+exposure and not just a data one. [SECURITY.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/SECURITY.md) covers the full
 threat model.
 
 ---
@@ -186,7 +198,7 @@ threat model.
 
 Stable. The CLI, environment variables and HTTP endpoints are settled, and the
 test suite covers the attribution math, time-window handling, cache semantics
-and the audit engine against Python 3.10–3.13 on every push.
+and the audit engine against Python 3.10–3.14 on every push.
 
 The accuracy model is the part still moving — CUR-based attribution is the path
 to making per-resource estimates exact, and it is the most valuable place to
@@ -204,8 +216,8 @@ Known limitations:
 
 Contributions welcome — especially CUR-based attribution, more service
 enumerators, and regional pricing coverage. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+[CONTRIBUTING.md](https://github.com/tirthteraiya/SpendSlicer/blob/main/CONTRIBUTING.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/tirthteraiya/SpendSlicer/blob/main/LICENSE).

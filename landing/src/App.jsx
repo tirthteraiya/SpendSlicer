@@ -31,7 +31,7 @@ function WhenNear({ children, minHeight }) {
   );
 }
 
-const REPO = "https://github.com/CheeseGOD777/spendslicer";
+const REPO = "https://github.com/tirthteraiya/SpendSlicer";
 const DOC = (f) => `${REPO}/blob/main/${f}`;
 
 /* Scroll reveal. IntersectionObserver, never a scroll listener: the page
@@ -62,7 +62,7 @@ function useReveal() {
 function Wordmark() {
   return (
     <a className="brand" href="#top" aria-label="SpendSlicer, home">
-      <span className="brand-mark" aria-hidden="true"><BrandMark size={18} /></span>
+      <span className="brand-mark" aria-hidden="true"><BrandMark size={26} /></span>
       <span className="brand-word"><b>SpendSlicer</b></span>
     </a>
   );

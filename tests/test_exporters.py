@@ -137,6 +137,13 @@ def test_run_scheduled_export_json_creates_file():
         assert len(files) == 1
 
 
+def test_run_scheduled_export_pdf_creates_readable_file(tmp_path):
+    config = ScheduledExportConfig(output_dir=str(tmp_path), formats=["pdf"])
+    result, = run_scheduled_export(_REPORT, config)
+    assert result.success, result.error
+    assert Path(result.destination).read_bytes().startswith(b"%PDF-")
+
+
 def test_run_scheduled_export_csv_creates_file():
     with tempfile.TemporaryDirectory() as td:
         config = ScheduledExportConfig(output_dir=td, formats=["csv"])

@@ -36,12 +36,12 @@ dependencies = [
     # ModuleNotFoundError on a plain `pip install spendslicer`.
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
+    "fpdf2>=2.8",
 ]
 
 [project.optional-dependencies]
 web = []  # kept so existing `spendslicer[web]` installs keep working
 exporters = [
-    "fpdf2>=2.8",
     "slack-sdk>=3.27",
 ]
 cur = [
@@ -79,10 +79,10 @@ spendslicer-web = "spendslicer.web.app:main"
 spendslicer-desktop = "spendslicer.desktop:main"
 
 [project.urls]
-Homepage = "https://github.com/CheeseGOD777/spendslicer"
-Repository = "https://github.com/CheeseGOD777/spendslicer"
-Issues = "https://github.com/CheeseGOD777/spendslicer/issues"
-Changelog = "https://github.com/CheeseGOD777/spendslicer/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/tirthteraiya/SpendSlicer"
+Repository = "https://github.com/tirthteraiya/SpendSlicer"
+Issues = "https://github.com/tirthteraiya/SpendSlicer/issues"
+Changelog = "https://github.com/tirthteraiya/SpendSlicer/blob/main/CHANGELOG.md"
 
 [tool.setuptools.dynamic]
 version = { attr = "spendslicer.__version__" }

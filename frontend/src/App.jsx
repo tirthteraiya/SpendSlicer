@@ -104,7 +104,12 @@ function usePageCues(hooks, where) {
   const stale = hooks.some((h) => h?.meta?.fromCache === "stale");
   const faulted = hooks.find((h) => h.error || h.backendError);
   const fault = faulted ? faulted.error || faulted.backendError : null;
+  // On the render where the period or profile changes, the fetches have not
+  // started yet, so `loading` is still false. Announcing then would overwrite
+  // "Period changed, re-reading" with "Board current" while the board dims.
+  const lastWhere = useRef(where);
   useEffect(() => {
+    if (lastWhere.current !== where) { lastWhere.current = where; return; }
     if (loading) return;
     if (fault) announce(KIND.FAULT, "Read failed", `${where} — ${fault}`);
     else if (stale) announce(KIND.STALE, "Serving cached figures", `${where} — could not reach the server for fresh numbers.`);
@@ -296,6 +301,10 @@ function DashboardPage({ profile, period }) {
 
   const pageHooks = [summary, services, trend, topResources];
   usePageCues(pageHooks, `${profile} · ${periodLabel(period)}`);
+  // A re-read (period or profile switch) keeps the board's last figures on
+  // screen, dimmed, so the split-flap can roll them to the new values instead
+  // of the board blanking to skeletons and repainting.
+  const reading = [summary, services].some((h) => h.loading && h.data);
 
   const fatal = summary.error || summary.backendError;
   if (fatal) {
@@ -336,7 +345,7 @@ function DashboardPage({ profile, period }) {
   const topResourcesRows = (r.rows || []).slice(0, 10);
   const topResourceMax = Math.max(...topResourcesRows.map((x) => value(x.cost, 1)), 1);
 
-  const reconciles = !topResources.loading && !r.warming && value(r.ce_total) > 0;
+  const reconciles = !!topResources.data && !r.warming && value(r.ce_total) > 0;
 
   return (
     <div className="page">
@@ -348,14 +357,14 @@ function DashboardPage({ profile, period }) {
         </Banner>
       )}
 
-      <section className="board" aria-label="Period spend board">
+      <section className={`board ${reading ? "is-reading" : ""}`} aria-label="Period spend board" aria-busy={reading}>
         <div className="board-main">
           <div className="board-figure">
             <div className="board-cap">
               {profile} · {periodLabel(period)} · {s.cost_basis_label || "Pre-credit gross"}
             </div>
             <div className="board-total">
-              {summary.loading ? <span className="skel" style={{ display: "inline-block", width: 300, height: 78 }} />
+              {!summary.data ? <span className="skel" style={{ display: "inline-block", width: 300, height: 78 }} />
                 : <Flap text={usd(s.total_mtd, 2)} />}
             </div>
             <div className="board-sub">
@@ -368,13 +377,13 @@ function DashboardPage({ profile, period }) {
           <div className="board-aside">
             <div className="board-aside-cell">
               <span className="board-aside-k">Previous period</span>
-              <span className="board-aside-v">{summary.loading ? "—" : usd(s.total_prev, 2)}</span>
+              <span className="board-aside-v"><Flap text={summary.data ? usd(s.total_prev, 2) : "—"} /></span>
             </div>
             <div className="board-aside-cell">
               <span className="board-aside-k">
                 Forecast at close <Mark kind="estimated" title="Cost Explorer forecast: a projection, not billed spend." />
               </span>
-              <span className="board-aside-v">{summary.loading ? "—" : usd(s.forecast, 2)}</span>
+              <span className="board-aside-v"><Flap text={summary.data ? usd(s.forecast, 2) : "—"} /></span>
             </div>
           </div>
         </div>
@@ -383,19 +392,19 @@ function DashboardPage({ profile, period }) {
         <div className="xcheck">
           <div className="xcheck-cell">
             <span className="xcheck-k">Attributed to resources {attrSource ? <Mark kind={resourceMark(attrSource)} /> : null}</span>
-            <span className="xcheck-v">{reconciles ? usd(r.total, 2) : "—"}</span>
+            <span className="xcheck-v"><Flap text={reconciles ? usd(r.total, 2) : "—"} /></span>
           </div>
           <div className="xcheck-op" aria-hidden="true">+</div>
           <div className="xcheck-cell">
             <span className="xcheck-k">Unattributed drift <Mark kind="drift" /></span>
             <span className={`xcheck-v ${value(r.unattributed) > 0.01 ? "is-drift" : ""}`}>
-              {reconciles ? usd(r.unattributed, 2) : "—"}
+              <Flap text={reconciles ? usd(r.unattributed, 2) : "—"} />
             </span>
           </div>
           <div className="xcheck-op" aria-hidden="true">=</div>
           <div className="xcheck-cell">
             <span className="xcheck-k">Cost Explorer total <Mark kind="exact" /></span>
-            <span className="xcheck-v">{reconciles ? usd(r.ce_total, 2) : "—"}</span>
+            <span className="xcheck-v"><Flap text={reconciles ? usd(r.ce_total, 2) : "—"} /></span>
           </div>
           <p className="xcheck-note">
             {r.warming
@@ -406,7 +415,7 @@ function DashboardPage({ profile, period }) {
 
         {/* Departures — the queue beneath the headline figure. */}
         <div className="dep">
-          {services.loading
+          {!services.data
             ? [0, 1, 2, 3, 4].map((i) => (
                 <div className="dep-row" key={i}><div className="skel skel-row" style={{ gridColumn: "1 / -1" }} /></div>
               ))
@@ -1053,14 +1062,18 @@ function AuditPage({ profile }) {
       )}
       <StaleBanner hooks={[audit, budgets]} />
 
-      <section className="board" aria-label="Recoverable spend board">
+      <section
+        className={`board ${audit.loading && audit.data ? "is-reading" : ""}`}
+        aria-label="Recoverable spend board"
+        aria-busy={audit.loading && !!audit.data}
+      >
         <div className="board-main">
           <div className="board-figure">
             <div className="board-cap">
               Estimated recoverable, per month · {Number(summary.regions_scanned || 0)} region{Number(summary.regions_scanned) === 1 ? "" : "s"} scanned
             </div>
             <div className="board-total">
-              {audit.loading ? <span className="skel" style={{ display: "inline-block", width: 240, height: 78 }} />
+              {!audit.data ? <span className="skel" style={{ display: "inline-block", width: 240, height: 78 }} />
                 : <Flap text={usd(waste, 2)} />}
             </div>
             <div className="board-sub">

@@ -2,12 +2,11 @@
  * Shared-secret token plumbing for the API client.
  *
  * The backend accepts a token on every money-spending route via the
- * `X-SpendSlicer-Token` header or a `?token=` query parameter. Self-hosted users
- * usually leave `SPENDSLICER_AUTH_TOKEN` unset (the loopback-only default), in
- * which case everything here is a no-op and no header is sent.
+ * `X-SpendSlicer-Token` header or a `?token=` query parameter.
  *
- * The desktop builds always set it: the launcher mints a random token per run
- * and hands it to the webview as `/app?token=...`. That closes a hole the
+ * Both launchers mint a random token per run or preserve a configured token.
+ * The desktop hands `/app?token=...` to its webview; the web launcher prints
+ * the protected link in the terminal. That closes a hole the
  * loopback bind alone does not — the server's CSRF check only guards
  * state-changing methods, so any page in the user's browser could otherwise
  * fire cross-origin GETs at the local port and spend real Cost Explorer money.
@@ -58,3 +57,32 @@ if (typeof window !== "undefined") {
 
 /** Headers to merge into every API request. Empty when no token is in play. */
 export const authHeaders = () => (token ? { "X-SpendSlicer-Token": token } : {});
+
+let reconnecting = null;
+
+/** Share one local-browser handshake across simultaneous expired requests. */
+export const reconnectLocal = () => {
+  if (!reconnecting) {
+    reconnecting = (async () => {
+      try {
+        // A foreign website cannot send this header without a CORS preflight.
+        // The backend also checks the browser's own Sec-Fetch-Site header.
+        const res = await fetch("/api/auth/local", {
+          headers: { "X-SpendSlicer-Local-UI": "1" },
+          cache: "no-store",
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (typeof data.token !== "string" || !data.token) return false;
+        token = data.token;
+        try { sessionStorage.setItem(STORAGE_KEY, token); } catch { /* in-memory fallback */ }
+        return true;
+      } catch {
+        return false;
+      } finally {
+        reconnecting = null;
+      }
+    })();
+  }
+  return reconnecting;
+};

@@ -32,7 +32,8 @@ pip install --quiet --upgrade pip
 pip install --quiet -e ".[web,cur]"
 
 echo.
-echo Starting dashboard at http://127.0.0.1:8080/app
+echo Starting SpendSlicer. Your local browser connects automatically.
+echo Open http://127.0.0.1:8080/app or the protected link printed below.
 echo Press Ctrl+C to stop.
 echo.
 REM The console script, not `python -m spendslicer.web.app`: web\__init__ imports

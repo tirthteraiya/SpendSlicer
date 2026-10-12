@@ -8,6 +8,10 @@
    ───────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* Brand accent belongs to the identity, never financial status or chart data. */
+  --brand-lime: #B9F467;
+  --brand-lime-hover: #A9E457;
+  --brand-ink: #0F1318;
   /* ── Board surfaces (cool enamel signage, never warm paper) ── */
   --board:      #E7EAEF;
   --board-2:    #DCE0E7;
@@ -174,11 +178,12 @@ a { color: inherit; text-decoration: none; }
   flex-shrink: 0;
   border-radius: var(--r-mark);
   background: var(--ink);
-  color: var(--panel);
+  color: var(--brand-lime);
   display: grid;
   place-items: center;
 }
 .rail-mark svg { display: block; }
+.brand-symbol { display: inline-block; flex-shrink: 0; vertical-align: middle; }
 .rail-word { display: flex; flex-direction: column; min-width: 0; line-height: 1; }
 .rail-word .name {
   font-family: var(--face-col);
@@ -593,6 +598,21 @@ select.ctl {
   .flap-strip { transition: none; }
   .flap-cell::after { display: none; }
 }
+
+/* A board being re-read holds its last figures, dimmed, until the new ones
+   arrive and roll in. Dimming is fast to leave so the roll reads at full ink.
+   Kept under reduced motion: it is state, not movement. */
+.board .board-figure,
+.board .board-aside,
+.board .xcheck-v,
+.board .dep { transition: opacity 120ms ease-out; }
+.board.is-reading .board-figure,
+.board.is-reading .board-aside,
+.board.is-reading .xcheck-v,
+.board.is-reading .dep { opacity: 0.4; transition-duration: 200ms; }
+/* The seam is the display figure's; at 22px it reads as a strikethrough. */
+.xcheck-v .flap-cell::after,
+.board-aside-v .flap-cell::after { display: none; }
 
 /* ── Delta ────────────────────────────────────────────────────────────── */
 

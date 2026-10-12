@@ -7,8 +7,8 @@ matters most.
 ## Setup
 
 ```bash
-git clone https://github.com/CheeseGOD777/spendslicer.git
-cd spendslicer
+git clone https://github.com/tirthteraiya/SpendSlicer.git
+cd SpendSlicer
 
 python3 -m venv venv && source venv/bin/activate
 pip install -e ".[web,cur,exporters,dev]"

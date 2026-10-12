@@ -88,9 +88,9 @@ code.mono {
   white-space: nowrap; cursor: pointer; border: 1px solid transparent;
   transition: background var(--swift), border-color var(--swift), transform var(--swift);
 }
-/* Primary inverts ink and ground, the way an active board row does. */
-.lp-btn-solid { background: var(--ink); color: var(--panel); border-color: var(--ink); }
-.lp-btn-solid:hover { background: var(--ink-2); border-color: var(--ink-2); }
+/* Lime marks the marketing action; the operational dashboard keeps ink controls. */
+.lp-btn-solid { background: var(--brand-lime); color: var(--brand-ink); border-color: var(--brand-ink); }
+.lp-btn-solid:hover { background: var(--brand-lime-hover); border-color: var(--brand-ink); }
 .lp-btn-quiet { background: var(--panel); color: var(--ink); border-color: var(--rule-2); }
 .lp-btn-quiet:hover { background: var(--panel-2); border-color: var(--rule-3); }
 .lp-btn:active { transform: translateY(1px); }
@@ -119,7 +119,7 @@ code.mono {
 .brand-mark {
   width: 30px; height: 30px; flex: none;
   border-radius: var(--r-mark);
-  background: var(--ink); color: var(--panel);
+  background: var(--ink); color: var(--brand-lime);
   display: grid; place-items: center;
 }
 .brand-word { display: flex; align-items: center; line-height: 1; }

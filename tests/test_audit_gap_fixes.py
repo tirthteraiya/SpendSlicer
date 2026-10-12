@@ -73,7 +73,7 @@ def _client():
     def _p():
         return {"ok": True}
 
-    return TestClient(app)
+    return TestClient(app, base_url="http://localhost:8080")
 
 
 # ---------------------------------------------------------------------------
@@ -88,10 +88,10 @@ def test_token_required_when_configured(monkeypatch):
     assert c.get("/api/probe", headers={"X-SpendSlicer-Token": "s3cret"}).status_code == 200
 
 
-def test_no_token_means_open(monkeypatch):
+def test_missing_server_token_fails_closed(monkeypatch):
     monkeypatch.delenv("SPENDSLICER_AUTH_TOKEN", raising=False)
     c = _client()
-    assert c.get("/api/probe").status_code == 200
+    assert c.get("/api/probe").status_code == 401
 
 
 # ---------------------------------------------------------------------------
@@ -122,9 +122,9 @@ def test_csrf_rejects_originless_post_when_unauthenticated(monkeypatch):
 
 
 def test_csrf_allows_same_origin_localhost_post(monkeypatch):
-    monkeypatch.delenv("SPENDSLICER_AUTH_TOKEN", raising=False)
+    monkeypatch.setenv("SPENDSLICER_AUTH_TOKEN", "s3cret")
     c = _client()
-    r = c.post("/api/probe", headers={"Origin": "http://localhost:8080", "Host": "localhost:8080"})
+    r = c.post("/api/probe", headers={"Origin": "http://localhost:8080", "Host": "localhost:8080", "X-SpendSlicer-Token": "s3cret"})
     assert r.status_code == 200
 
 
@@ -136,10 +136,59 @@ def test_csrf_allows_originless_post_with_valid_token(monkeypatch):
     assert r.status_code == 200
 
 
-def test_get_not_subject_to_csrf(monkeypatch):
+def test_cross_origin_get_needs_token(monkeypatch):
     monkeypatch.delenv("SPENDSLICER_AUTH_TOKEN", raising=False)
     c = _client()
-    assert c.get("/api/probe", headers={"Host": "localhost"}).status_code == 200
+    assert c.get("/api/probe", headers={"Origin": "https://evil.example"}).status_code == 401
+
+
+def test_foreign_host_rejected_even_with_valid_token(monkeypatch):
+    monkeypatch.setenv("SPENDSLICER_AUTH_TOKEN", "s3cret")
+    c = _client()
+    assert c.get("/api/probe", headers={"Host": "evil.example", "X-SpendSlicer-Token": "s3cret"}).status_code == 403
+
+
+def test_foreign_host_cannot_read_dashboard_or_schema(monkeypatch):
+    from spendslicer.web import app
+
+    monkeypatch.setenv("SPENDSLICER_AUTH_TOKEN", "s3cret")
+    c = TestClient(app, base_url="http://localhost:8080")
+    for path in ("/app", "/app/assets/example.js", "/openapi.json"):
+        assert c.get(path, headers={"Host": "evil.example"}).status_code == 403
+    assert c.get("/app").status_code == 200
+
+
+def test_web_launch_generates_token_and_prints_usable_url(monkeypatch, capsys):
+    import importlib
+    from urllib.parse import parse_qs, urlsplit
+
+    import uvicorn
+
+    app_module = importlib.import_module("spendslicer.web.app")
+    monkeypatch.delenv("SPENDSLICER_AUTH_TOKEN", raising=False)
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: None)
+    app_module.main()
+    token = app_module._auth_token()
+    assert len(token) >= 32
+    url = capsys.readouterr().out.strip().removeprefix("Open SpendSlicer: ")
+    assert parse_qs(urlsplit(url).query)["token"] == [token]
+    c = _client()
+    assert c.get("/api/probe").status_code == 401
+    assert c.get("/api/probe", headers={"X-SpendSlicer-Token": token}).status_code == 200
+
+
+def test_web_launch_preserves_configured_token(monkeypatch, capsys):
+    import importlib
+    from urllib.parse import parse_qs, urlsplit
+
+    import uvicorn
+
+    app_module = importlib.import_module("spendslicer.web.app")
+    monkeypatch.setenv("SPENDSLICER_AUTH_TOKEN", "custom+token&value")
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: None)
+    app_module.serve()
+    url = capsys.readouterr().out.strip().removeprefix("Open SpendSlicer: ")
+    assert parse_qs(urlsplit(url).query)["token"] == ["custom+token&value"]
 
 
 # ---------------------------------------------------------------------------

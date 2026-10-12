@@ -50,3 +50,9 @@ Thumbs.db
 # live-mode config. Kept on disk for future sessions, not published.
 .impeccable/
 frontend/.impeccable/
+
+# Local identity explorations and generated download archive; final sources live in branding/kit.
+branding/options/
+branding/spendslicer-mark.png
+branding/spendslicer-wordmark.png
+branding/SpendSlicer-v1-brand-kit.zip
