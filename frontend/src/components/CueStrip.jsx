@@ -6,12 +6,12 @@ const at = (ts) =>
 
 /* THE CUE RAISE — the board announces every change instead of repainting
    silently. Rendered as a live region so the announcement is not visual-only. */
-export function CueStrip() {
+export function CueStrip({ solo = false }) {
   const [cue, setCue] = useState(null);
   useEffect(() => subscribeCue(setCue), []);
   if (!cue) return null;
   return (
-    <div className="cue" role="status" aria-live="polite">
+    <div className={`cue ${solo ? "cue-solo" : ""}`} role="status" aria-live="polite">
       <span className={`cue-dot ${cue.kind}`} aria-hidden="true" />
       <span className="cue-what">{cue.what}</span>
       {cue.detail && <span>{cue.detail}</span>}

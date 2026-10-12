@@ -136,6 +136,7 @@ a { color: inherit; text-decoration: none; }
   display: grid;
   grid-template-columns: var(--rail-w) 1fr;
   height: 100vh;
+  height: 100dvh; /* 100vh runs under the mobile browser bar */
   overflow: hidden;
   background: var(--board);
 }
@@ -575,7 +576,6 @@ select.ctl {
   display: flex;
   flex-direction: column;
   transition: transform var(--flap);
-  will-change: transform;
 }
 .flap-strip > span { height: 0.9em; line-height: 0.9em; text-align: center; }
 /* The seam is the split in split-flap. */
@@ -727,16 +727,6 @@ select.ctl {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dep-track { display: block; position: relative; height: 6px; background: var(--panel-3); border-radius: var(--r-bar); overflow: hidden; }
-.dep-fill {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: var(--r-bar);
-  transform: scaleX(var(--fill, 0));
-  transform-origin: left center;
-  transition: transform var(--ease);
-}
 .dep-cost {
   font-family: var(--face-board);
   font-size: 19px;
@@ -772,7 +762,6 @@ select.ctl {
 }
 .panel-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--ink-4); line-height: 1.45; }
 .panel-body { padding: 20px 22px; }
-.panel-body-flush { padding: 0; }
 
 /* THE MASS RAISE — sections are separated by real voids, not borders. */
 .void-lg { height: 34px; }
@@ -781,7 +770,6 @@ select.ctl {
 /* Panels size to their content; a stretched panel reads as an unfinished
    column rather than as authored air. */
 .split { display: grid; grid-template-columns: 1.35fr 1fr; gap: 22px; align-items: start; }
-.stack { display: flex; flex-direction: column; gap: 22px; }
 
 /* ── Timetable ────────────────────────────────────────────────────────── */
 
@@ -840,7 +828,7 @@ button.id {
   background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
   transition: color var(--swift);
 }
-button.id:hover { color: var(--signal); }
+button.id:hover { color: var(--ink); }
 
 /* Row mass in a table: one magnitude language across the whole page. */
 .tt-mass tbody tr {
@@ -863,6 +851,14 @@ button.id:hover { color: var(--signal); }
 }
 .caret.open { transform: rotate(90deg); color: var(--ink); }
 tr.clickable { cursor: pointer; }
+.row-toggle {
+  display: inline-grid; place-items: center;
+  width: 24px; height: 24px;
+  margin: -4px;
+  padding: 0; border: 0; background: none;
+  border-radius: var(--r-mark);
+  cursor: pointer;
+}
 tr.clickable:hover .caret { color: var(--ink); }
 
 /* The drift row is dashed because it is not a resource. */
@@ -1009,6 +1005,8 @@ tr.clickable:hover .caret { color: var(--ink); }
 @keyframes cue-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .cue-dot.working { animation: none; } }
 .cue-what { font-family: var(--face-col); font-weight: 600; color: var(--ink-2); }
+/* Pages without a board carry the strip on its own plate. */
+.cue-solo { border: 1px solid var(--rule); border-radius: var(--r-ctl); padding: 9px 16px; margin-bottom: 18px; }
 .cue-time { margin-left: auto; font-size: 12px; color: var(--ink-4); white-space: nowrap; }
 
 /* ── Banners ──────────────────────────────────────────────────────────── */
@@ -1088,8 +1086,56 @@ tr.clickable:hover .caret { color: var(--ink); }
 .skel-row { height: 20px; margin: 9px 0; }
 
 .loading { padding: 22px; color: var(--ink-4); font-size: 13.5px; }
-.muted { color: var(--ink-4); }
 .faint { color: var(--ink-4); }
+
+/* ── Mobile navigation sheet ──────────────────────────────────────────
+   The rail is hidden below 900px, so navigation moves into a native modal
+   dialog: focus trap, Escape, and focus return come with the element. */
+
+.only-narrow { display: none; }
+
+.sheet {
+  position: fixed;
+  inset: 0 auto 0 0;
+  margin: 0;
+  width: min(292px, 84vw);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  background: var(--panel);
+  color: inherit;
+  box-shadow: var(--lift-2);
+  overflow-y: auto;
+}
+.sheet-body { padding: 20px 12px; }
+.sheet::backdrop { background: rgba(15, 19, 24, 0.42); }
+.sheet[open] { animation: sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.sheet[open]::backdrop { animation: scrim-in 160ms ease-out; }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheet-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .sheet[open], .sheet[open]::backdrop { animation: none; }
+}
+
+/* Secondary line under a table's lead cell; only used where a column is
+   dropped on narrow screens so its data still has somewhere to live. */
+.under { display: none; margin-top: 5px; }
+
+.plain-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  max-width: 68ch;
+}
+.plain-list li::marker { color: var(--ink-5); }
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
 
@@ -1100,12 +1146,12 @@ tr.clickable:hover .caret { color: var(--ink); }
   .dep-row, .cue { padding-left: 26px; padding-right: 26px; }
 }
 @media (max-width: 1180px) {
-  .split, .split-even { grid-template-columns: 1fr; }
-  
+  .split { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
   .app, .app.collapsed { grid-template-columns: 1fr; }
   .rail { display: none; }
+  .only-narrow { display: inline-flex; padding: 0 9px; }
   .page { padding: 22px 18px 96px; }
 
   /* The title plus two selects overflowed 390px, cutting the profile picker
@@ -1117,7 +1163,6 @@ tr.clickable:hover .caret { color: var(--ink); }
     flex-wrap: wrap;
     align-items: center;
   }
-  .board-bar-title { font-size: 17px; }
   .board-bar-spacer { display: none; }
   .board-bar-ctls { width: 100%; gap: 8px; }
   .board-bar-ctls .ctl { flex: 1 1 0; min-width: 0; }
@@ -1139,106 +1184,43 @@ tr.clickable:hover .caret { color: var(--ink); }
   .board-main { padding: 22px 18px 18px; flex-direction: column; align-items: stretch; gap: 22px; }
 
   .board-aside { width: 100%; }
-  .board-aside-cell { flex: 1; min-width: 0; padding: 11px 14px; }
+  .board-aside-cell { flex: 1; min-width: 0; padding: 0 0 0 16px; margin-left: 16px; }
   .board-aside-v { font-size: 22px; }
+
+  /* Name and cost share the first line; the share badge drops beneath. */
   .dep-row {
     grid-template-columns: 1fr auto;
-    grid-template-areas: "name cost" "track share";
-    gap: 8px 14px;
-    padding: 13px 18px;
+    grid-template-areas: "name cost" "badge .";
+    gap: 6px 12px;
+    padding: 14px 18px;
   }
   .dep-name { grid-area: name; }
-  .dep-cost { grid-area: cost; font-size: 19px; }
-  .dep-track { grid-area: track; }
-  .dep-share { grid-area: share; }
+  .dep-cost { grid-area: cost; }
+  .dep-badge { grid-area: badge; justify-self: start; min-width: 54px; }
+
   .cue { padding: 9px 18px; flex-wrap: wrap; }
   .cue-time { margin-left: 0; width: 100%; }
   .head h1 { font-size: 27px; }
-  .legend { gap: 14px; }
-}
-
-/* ── Mobile navigation sheet ──────────────────────────────────────────
-   The rail is hidden below 900px, so navigation moves into a sheet
-   rather than disappearing (it used to simply vanish). */
-
-.only-narrow { display: none; }
-
-.sheet-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(15, 19, 24, 0.42);
-  animation: scrim-in 160ms ease-out;
-}
-.sheet {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: min(292px, 84vw);
-  background: var(--panel);
-  border-right: 1px solid var(--rule);
-  padding: 20px 12px;
-  overflow-y: auto;
-  box-shadow: var(--lift-2);
-  animation: sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes sheet-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-@media (prefers-reduced-motion: reduce) {
-  .sheet-scrim, .sheet { animation: none; }
-}
-
-@media (max-width: 900px) {
-  .only-narrow { display: inline-flex; padding: 0 9px; }
-}
-
-/* ── Dense tables on narrow screens ───────────────────────────────────
-   A timetable scrolls rather than squeezing, but Cost must stay reachable:
-   Service is the one column the chip filter above already answers. */
-@media (max-width: 900px) {
-  .tt th, .tt td { padding: 11px 13px; }
-  .tt th { white-space: nowrap; }
-  .tt-res th:nth-child(2),
-  .tt-res td:nth-child(2) { display: none; }
-  .tt-res td:first-child { min-width: 120px; }
-  .tt .id { font-size: 11.5px; }
-  .notice { grid-template-columns: 1fr; gap: 6px; padding: 13px 18px; }
-  .notice-cost { text-align: left; font-size: 16px; }
-  .legend { padding: 14px 16px; }
+  .legend { gap: 14px; padding: 14px 16px; }
   .panel-body { padding: 16px 18px; }
   .panel-head { padding: 15px 18px 13px; }
-}
+  .notice { grid-template-columns: 1fr; gap: 6px; padding: 13px 18px; }
+  .notice-cost { text-align: left; font-size: 16px; }
 
-/* ── Post-review additions ────────────────────────────────────────────── */
-
-/* Secondary line under a table's lead cell; only used where a column is
-   dropped on narrow screens so its data still has somewhere to live. */
-.under { display: none; margin-top: 5px; }
-
-.plain-list {
-  margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  font-size: 13.5px;
-  color: var(--ink-3);
-  line-height: 1.55;
-  max-width: 68ch;
-}
-.plain-list li::marker { color: var(--ink-5); }
-
-@media (max-width: 900px) {
-  /* Cost is the product's whole subject; it stays visible at rest.
-     Service is answered by the chip filter above, and the resource ID
-     moves under the name rather than off the screen. */
-  .tt-res th:nth-child(3),
-  .tt-res td:nth-child(3) { display: none; }
+  /* A timetable scrolls rather than squeezing, but Cost must stay reachable.
+     Service is answered by the chip filter above, and the resource ID rides
+     under the name rather than off the screen. */
+  .tt th, .tt td { padding: 11px 13px; }
+  .tt .id { font-size: 11.5px; }
+  .tt-res th:nth-child(2), .tt-res td:nth-child(2),
+  .tt-res th:nth-child(3), .tt-res td:nth-child(3) { display: none; }
   .tt-res .under { display: block; }
-  .tt-res td:first-child { min-width: 0; }
+}
 
-  .dep-row { grid-template-columns: 1fr auto; gap: 6px 12px; padding: 14px 18px; }
-  .dep-badge { grid-row: 2; justify-self: start; min-width: 54px; font-size: 14px; }
-  .dep-cost { grid-row: 1; }
-  .board-aside { width: 100%; }
-  .board-aside-cell { flex: 1; min-width: 0; padding: 0 0 0 16px; margin-left: 16px; }
+/* Touch screens get 44px targets; a mouse keeps the dense board. */
+@media (pointer: coarse) {
+  .ctl, .btn, .chip, .row-toggle { min-height: 44px; }
+  .row-toggle { min-width: 44px; margin: -10px; }
+  .banner-act, .link-btn, button.id { min-height: 44px; }
+  .rail-item { min-height: 44px; }
 }

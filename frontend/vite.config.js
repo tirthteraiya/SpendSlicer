@@ -19,9 +19,13 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          recharts: ["recharts"],
-          react: ["react", "react-dom"],
+        // Function form: the object form left React inside the recharts chunk
+        // (the "react" chunk was an empty re-export), so React re-downloaded
+        // with every charting upgrade.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react";
+          return "vendor";
         },
       },
     },

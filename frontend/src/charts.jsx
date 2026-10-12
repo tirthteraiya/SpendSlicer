@@ -49,7 +49,7 @@ export function TrendBars({ data, keys, height = 288 }) {
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 4, left: 0, bottom: 2 }} barCategoryGap="26%">
+        <BarChart accessibilityLayer data={data} margin={{ top: 10, right: 4, left: 0, bottom: 2 }} barCategoryGap="26%">
           <CartesianGrid stroke="var(--rule)" strokeDasharray="0" vertical={false} />
           <XAxis
             dataKey="month"

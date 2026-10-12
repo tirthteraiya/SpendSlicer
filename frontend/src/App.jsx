@@ -129,7 +129,7 @@ function Delta({ value: v, note }) {
 
 /* ── Rail ─────────────────────────────────────────────────────────────── */
 
-function RailNav({ page, setPage, onPick }) {
+function RailNav({ page, setPage, onPick, collapsed }) {
   return (
     <>
       {NAV.map((g, gi) => (
@@ -144,6 +144,8 @@ function RailNav({ page, setPage, onPick }) {
                 className={`rail-item ${page === it ? "on" : ""}`}
                 onClick={() => { setPage(it); onPick?.(); }}
                 aria-current={page === it ? "page" : undefined}
+                aria-label={TITLES[it]}
+                title={collapsed ? TITLES[it] : undefined}
               >
                 <Icon size={18} />
                 <span className="rail-item-text">{TITLES[it]}</span>
@@ -173,7 +175,7 @@ function Rail({ page, setPage, profile, collapsed, setCollapsed }) {
         {collapsed ? <IconChevron size={13} /> : <IconChevron size={13} style={{ transform: "rotate(180deg)" }} />}
       </button>
       <nav style={{ flex: 1 }} aria-label="Sections">
-        <RailNav page={page} setPage={setPage} />
+        <RailNav page={page} setPage={setPage} collapsed={collapsed} />
       </nav>
       <div className="rail-foot">
         <div className="rail-who">
@@ -190,22 +192,23 @@ function Rail({ page, setPage, profile, collapsed, setCollapsed }) {
 
 /* Below 900px the rail is hidden, so navigation moves into a sheet. */
 function MobileNav({ open, setOpen, page, setPage, profile }) {
+  // A native modal dialog traps focus, closes on Escape, and hands focus back
+  // to the menu button on close — none of which a div can do on its own.
+  const ref = useRef(null);
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, setOpen]);
-  if (!open) return null;
+    const d = ref.current;
+    if (open && !d.open) d.showModal();
+    else if (!open && d.open) d.close();
+  }, [open]);
   return (
-    <div className="sheet-scrim" onClick={() => setOpen(false)}>
-      <div
-        className="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <dialog
+      ref={ref}
+      className="sheet"
+      aria-label="Navigation"
+      onClose={() => setOpen(false)}
+      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+    >
+      <div className="sheet-body">
         <div className="rail-brand">
           <span className="rail-mark"><BrandMark /></span>
           <span className="rail-word">
@@ -217,7 +220,7 @@ function MobileNav({ open, setOpen, page, setPage, profile }) {
           <RailNav page={page} setPage={setPage} onPick={() => setOpen(false)} />
         </nav>
       </div>
-    </div>
+    </dialog>
   );
 }
 
@@ -337,6 +340,7 @@ function DashboardPage({ profile, period }) {
 
   return (
     <div className="page">
+      <h1 className="sr-only">Dashboard</h1>
       <StaleBanner hooks={pageHooks} />
       {(services.backendError || trend.backendError) && (
         <Banner tone="warn" onRetry={() => { services.reload(); trend.reload(); }}>
@@ -367,7 +371,9 @@ function DashboardPage({ profile, period }) {
               <span className="board-aside-v">{summary.loading ? "—" : usd(s.total_prev, 2)}</span>
             </div>
             <div className="board-aside-cell">
-              <span className="board-aside-k">Forecast at close</span>
+              <span className="board-aside-k">
+                Forecast at close <Mark kind="estimated" title="Cost Explorer forecast: a projection, not billed spend." />
+              </span>
               <span className="board-aside-v">{summary.loading ? "—" : usd(s.forecast, 2)}</span>
             </div>
           </div>
@@ -376,7 +382,7 @@ function DashboardPage({ profile, period }) {
         {/* THE CROSS-CHECK — each cell owns one truth, and the row reconciles. */}
         <div className="xcheck">
           <div className="xcheck-cell">
-            <span className="xcheck-k">Attributed to resources</span>
+            <span className="xcheck-k">Attributed to resources {attrSource ? <Mark kind={resourceMark(attrSource)} /> : null}</span>
             <span className="xcheck-v">{reconciles ? usd(r.total, 2) : "—"}</span>
           </div>
           <div className="xcheck-op" aria-hidden="true">+</div>
@@ -660,6 +666,7 @@ function ServicesPage({ profile, period }) {
         <h1>Services</h1>
         <p>Every service billed in this window, exact from Cost Explorer. Open a row to see what is driving it — compute, storage, data transfer, network — down to the usage type.</p>
       </div>
+      <CueStrip solo />
       <StaleBanner hooks={[services]} />
 
       {services.loading ? (
@@ -685,15 +692,18 @@ function ServicesPage({ profile, period }) {
                   const toggle = () => { setCompNeeded(true); setExpanded(isOpen ? null : row.name); };
                   return (
                     <Fragment key={row.name}>
-                      <tr
-                        className={`clickable ${isOpen ? "tt-row-open" : ""}`}
-                        onClick={toggle}
-                        tabIndex={0}
-                        role="button"
-                        aria-expanded={isOpen}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } }}
-                      >
-                        <td><span className={`caret ${isOpen ? "open" : ""}`}><IconChevron size={14} /></span></td>
+                      <tr className={`clickable ${isOpen ? "tt-row-open" : ""}`} onClick={toggle}>
+                        <td>
+                          <button
+                            type="button"
+                            className="row-toggle"
+                            aria-expanded={isOpen}
+                            aria-label={`${isOpen ? "Hide" : "Show"} breakdown for ${row.name}`}
+                            onClick={(e) => { e.stopPropagation(); toggle(); }}
+                          >
+                            <span className={`caret ${isOpen ? "open" : ""}`}><IconChevron size={14} /></span>
+                          </button>
+                        </td>
                         <td className="tt-lead col">{row.name}</td>
                         <td className="num"><span className="num-strong">{usd(row.cost, 2)}</span></td>
                         <td className="num tt-quiet">{Number(row.pct_of_total || 0).toFixed(1)}%</td>
@@ -810,7 +820,7 @@ function ResourcesPage({ profile, period }) {
       <section className="panel">
         <div className="xcheck" style={{ borderTop: 0 }}>
           <div className="xcheck-cell">
-            <span className="xcheck-k">Attributed <Mark kind={kind} /></span>
+            <span className="xcheck-k">Attributed {d.attribution_source ? <Mark kind={kind} /> : null}</span>
             <span className="xcheck-v">{usd(d.total, 2)}</span>
           </div>
           <div className="xcheck-op" aria-hidden="true">+</div>
@@ -827,9 +837,10 @@ function ResourcesPage({ profile, period }) {
             {kind === "exact"
               ? "These rows are real billed CUR line items, so they are exact."
               : "These rows are estimates: usage-type buckets split by running hours and list price, then rescaled to the service total."}
-            {" "}Drift is {Number(d.unattributed_pct || 0).toFixed(1)}% of the total and is shown on its own line, never spread across the rows.
+            {" "}Drift{d.unattributed_pct == null ? "" : ` is ${Number(d.unattributed_pct).toFixed(1)}% of the total and`} is shown on its own line, never spread across the rows.
           </p>
         </div>
+        <CueStrip />
       </section>
 
       {(d.incomplete || (d.warnings || []).length > 0) && (
@@ -1164,9 +1175,9 @@ function AuditPage({ profile }) {
 /* ── Export — issue a copy ────────────────────────────────────────────── */
 
 const FORMATS = [
-  { id: "csv", name: "CSV", what: "One row per resource. Opens in a spreadsheet.", everywhere: true },
-  { id: "json", name: "JSON", what: "Full payload including provenance records.", everywhere: true },
-  { id: "pdf", name: "PDF", what: "Formatted report. Renders through Puppeteer.", everywhere: false },
+  { id: "csv", name: "CSV", what: "One row per resource. Opens in a spreadsheet." },
+  { id: "json", name: "JSON", what: "Full payload including provenance records." },
+  { id: "pdf", name: "PDF", what: "Typeset report, rendered on this machine with fpdf2." },
 ];
 
 function ExportPage({ profile, period }) {
@@ -1199,6 +1210,7 @@ function ExportPage({ profile, period }) {
         <h1>Export</h1>
         <p>Issue a copy of this window — {profile}, {periodLabel(period)} — for sharing or archiving. The file is written by your own machine; nothing is uploaded.</p>
       </div>
+      <CueStrip solo />
 
       <section className="panel" style={{ maxWidth: 760 }}>
         <div className="panel-head">
@@ -1230,8 +1242,8 @@ function ExportPage({ profile, period }) {
 
           {fmt === "pdf" && (
             <Banner tone="warn">
-              PDF rendering needs Node.js on this machine. It does not work in the packaged desktop
-              builds or a bare <code>pip install</code>. CSV and JSON work everywhere.
+              PDF uses the core PDF fonts, so resource names outside Latin-1 (CJK, Cyrillic, emoji)
+              print as <code>?</code>. CSV and JSON carry them intact.
             </Banner>
           )}
 
@@ -1240,7 +1252,7 @@ function ExportPage({ profile, period }) {
               {running ? "Generating…" : `Generate ${picked?.name || ""}`}
             </button>
             {status && (
-              <span role="status" style={{ fontSize: 13.5, color: status.ok ? "var(--ink-3)" : "var(--signal)" }}>
+              <span style={{ fontSize: 13.5, color: status.ok ? "var(--ink-3)" : "var(--signal)" }}>
                 {status.msg}
               </span>
             )}
@@ -1345,7 +1357,7 @@ export default function App() {
           context={contextState.data}
           onMenu={() => setMenuOpen(true)}
         />
-        <div className="scroll">{pageNode}</div>
+        <main className="scroll">{pageNode}</main>
       </div>
       <CostBadge />
     </div>

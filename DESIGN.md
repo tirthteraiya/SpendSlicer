@@ -38,29 +38,29 @@ colors:
 typography:
   display:
     fontFamily: "Manrope Variable, Manrope, -apple-system, system-ui, sans-serif"
-    fontSize: "clamp(46px, 5.6vw, 84px)"
-    fontWeight: 600
+    fontSize: "clamp(38px, 4.1vw, 60px)"
+    fontWeight: 800
     lineHeight: 0.9
-    letterSpacing: "-0.022em"
+    letterSpacing: "-0.035em"
     fontFeature: "tabular-nums"
   headline:
     fontFamily: "Manrope Variable, Manrope, -apple-system, system-ui, sans-serif"
-    fontSize: "34px"
-    fontWeight: 600
+    fontSize: "32px"
+    fontWeight: 800
     lineHeight: 1.04
-    letterSpacing: "-0.022em"
+    letterSpacing: "-0.032em"
   title:
     fontFamily: "Manrope Variable, Manrope, -apple-system, system-ui, sans-serif"
     fontSize: "17px"
-    fontWeight: 600
+    fontWeight: 700
     lineHeight: 1.15
-    letterSpacing: "-0.012em"
+    letterSpacing: "-0.022em"
   figure:
     fontFamily: "Manrope Variable, Manrope, -apple-system, system-ui, sans-serif"
-    fontSize: "21px"
-    fontWeight: 600
+    fontSize: "22px"
+    fontWeight: 700
     lineHeight: 1
-    letterSpacing: "-0.01em"
+    letterSpacing: "-0.022em"
     fontFeature: "tabular-nums"
   body:
     fontFamily: "Manrope Variable, Manrope, -apple-system, system-ui, sans-serif"
@@ -189,12 +189,12 @@ The material is cool enamel signage, never warm paper. Ground is a cool grey
 board; panels are white plates set on it; every division between things is a 1px
 hairline rule. Depth is not part of the vocabulary — nothing floats except two
 elements that genuinely float, and state changes are made by swapping ink and
-ground rather than by adding light. Numbers are set in a condensed board face
+ground rather than by adding light. Numbers are set in the board face
 with tabular figures so a column of costs lines up as a column; monospace is
 reserved for machine identifiers, where character-level literalness is the point.
 
 Density is deliberately not uniform. The Dashboard is the calm overview and gets
-air: a 96px figure, real voids between sections, generous row padding. Services
+air: a 60px figure, real voids between sections, generous row padding. Services
 and Resources are the working surfaces and stay information-dense, because
 scanning many rows is the job there — they get the same language, not fewer rows.
 The application is light-only; there is no dark theme, and the document declares
@@ -204,7 +204,7 @@ The application is light-only; there is no dark theme, and the document declares
 - Hairline rules carry all structure; panels are flat and bordered, never shadowed.
 - One signal red, owning exactly one meaning: overrun, drift, breach, error.
 - Eight line liveries confined to data marks; chrome is ink, rules, and ground.
-- Board-face condensed numerals with tabular figures at every scale.
+- Board-face numerals with tabular figures at every scale.
 - Magnitude reads as mass — a proportional row tint — before any number is read.
 - States invert ink and ground; the active item is the darkest thing on screen.
 - One authored motion: the split-flap numeral roll. Charts do not animate.
@@ -260,7 +260,7 @@ Tabular figures are set globally on `body`, so every column of numbers aligns
 without per-component effort.
 
 ### Hierarchy
-- **Display** (800, `clamp(46px, 5.6vw, 84px)`, line-height 0.9, -0.035em): The period total and the audit recoverable figure, and nothing else. Fluid rather than stepped, so a seven-figure bill cannot overrun its row at any width.
+- **Display** (800, `clamp(38px, 4.1vw, 60px)`, line-height 0.9, -0.035em): The period total and the audit recoverable figure, and nothing else. Fluid rather than stepped, so a seven-figure bill cannot overrun its row at any width.
 - **Headline** (800, 32px, -0.032em): Page titles. 27px below 900px.
 - **Title** (700-800, 16-19px): Panel headings (16px), brand wordmark (19px at 800), board bar title (17px).
 - **Figure** (700, 14-24px): Every number that is not a display figure — board aside values (24px), cross-check values (22px), departure costs (19px), strong table numbers (15.5px), notice costs (17px), track badges (14px).
@@ -301,8 +301,9 @@ padding and keep every row rather than paginating into calm.
 
 Breakpoints, and what each one changes:
 - **1400px** — page and board padding tighten to 32px/26px.
-- **1180px** — split grids collapse to one column; the display figure drops to 76px.
-- **900px** — the rail is replaced by a slide-in navigation sheet; board bar controls take their own full-width row; the cross-check reconciles vertically with its operators left-aligned rather than orphaned mid-air; departure rows regrid to name/cost over track/badge; dense tables drop the service column (already answered by the chip filter above) and move the resource identifier under its name rather than off screen. Cost is never the column that gets dropped.
+- **1180px** — split grids collapse to one column. The display figure needs no step: its clamp already shrinks with the viewport.
+- **900px** — the rail is replaced by a slide-in navigation sheet, built on a native modal `<dialog>` so focus is trapped, Escape closes it, and focus returns to the menu button; board bar controls take their own full-width row; the cross-check reconciles vertically with its operators left-aligned rather than orphaned mid-air; departure rows regrid to name/cost over badge; dense tables drop the service column (already answered by the chip filter above) and move the resource identifier under its name rather than off screen. Cost is never the column that gets dropped.
+- **Coarse pointer** (touch screens, any width) — controls, chips, buttons, rail items, the row-expand toggle, banner actions, link buttons, and copyable identifiers grow to 44px minimum. A mouse keeps the dense board.
 
 ### Named Rules
 
@@ -365,14 +366,14 @@ round caps and joins — with no icon dependency, no icon font, and no emoji.
 - **Primary:** Ink ground, panel-white text. No border, no shadow. It is the darkest element in its region and that is its emphasis.
 - **Hover / Active:** Primary lifts to `{colors.ink-2}`; all buttons translate down 1px on `:active`. Transitions run at 130ms. Disabled drops to 50% opacity and loses the press.
 - **Quiet:** White ground, `{colors.rule-2}` border, `{colors.ink-2}` text; hover shifts the ground to `{colors.panel-2}` and darkens the border to `{colors.rule-3}`.
-- **Link button:** No ground; semi-condensed 600 at 13px, underlined with a 3px offset in `{colors.rule-3}` that darkens to full ink on hover.
+- **Link button:** No ground; 600 at 13px, underlined with a 3px offset in `{colors.rule-3}` that darkens to full ink on hover.
 
 ### Controls (period and profile selects)
 - **Style:** 34px tall, 11px padding, white ground, `{colors.rule-2}` border, 8px radius, 13.5px medium label. Selects use an inline SVG chevron at 10px from the right; the native arrow is suppressed.
 - **Hover:** Border darkens to `{colors.rule-3}`, ground to `{colors.panel-2}`.
 
 ### Chips
-- **Style:** Semi-condensed 13.5px on white with a `{colors.rule-2}` border, 8px radius, 6px/13px padding, arranged in a horizontally scrolling row.
+- **Style:** 13.5px medium on white with a `{colors.rule-2}` border, 8px radius, 6px/13px padding, arranged in a horizontally scrolling row.
 - **State:** Selected inverts to ink ground with panel text and a matching ink border. There is no third state and no accent tint.
 
 ### Panels / Boards
@@ -380,10 +381,10 @@ round caps and joins — with no icon dependency, no icon font, and no emoji.
 - **Background:** White plate on the board ground. Headers and recessed strips use `{colors.panel-2}`.
 - **Shadow Strategy:** None, at any state. See Elevation & Depth.
 - **Border:** 1px `{colors.rule}` all round; the panel header is divided from the body by the same rule.
-- **Internal Padding:** 18px/22px header, 20px/22px body, reduced to 15px/18px and 16px/18px below 900px. `panel-body-flush` drops padding entirely where a table or row list should meet the panel edge.
+- **Internal Padding:** 18px/22px header, 20px/22px body, reduced to 15px/18px and 16px/18px below 900px.
 
 ### Inputs / Fields
-- **Style:** 40px tall, 13px padding, white ground, `{colors.rule-2}` border, 8px radius, label above in semi-condensed 600 at 13px, optional note below in 12.5px `{colors.ink-4}`.
+- **Style:** 40px tall, 13px padding, white ground, `{colors.rule-2}` border, 8px radius, label above in 600 at 13px, optional note below in 12.5px `{colors.ink-4}`.
 - **Focus:** The border goes to full `{colors.ink}` with a 3px `rgba(15,19,24,0.09)` ring — a widened stroke, not a glow. Global `:focus-visible` is a 2px `{colors.ink}` outline at 2px offset.
 
 ### Navigation
@@ -417,8 +418,10 @@ decoration. Operators are set in the board face at 21px in `{colors.ink-6}`. On
 narrow screens the strip becomes a vertical equation with left-aligned operators.
 
 ### Cue Strip
-A single 38px live-region line at the foot of the shell: a 7px status dot
-(on-time / caution / signal), a semi-condensed 600 event name, optional detail,
+A single 38px live-region line, present on every page: at the foot of the board
+on Dashboard, Resources, and Audit, and on its own bordered plate under the page
+head on Services and Export, which have no board. A 7px status dot
+(on-time / caution / signal), a 600 event name, optional detail,
 and a right-aligned timestamp. It exists so the board announces what changed
 rather than repainting silently.
 
@@ -461,4 +464,4 @@ and the seam are both dropped.
 - **Don't** animate charts, or add motion beyond the split-flap and the cue pulse.
 - **Don't** add a dark theme; the application declares `color-scheme: light` and its grounds are enamel signage, not paper.
 - **Don't** ship a raw hex value in a component; every color comes from the token set. Two carve-outs, both deliberate: `charts.jsx` mirrors `{colors.line-1}`–`{colors.line-8}` as the exported `PALETTE` because Recharts needs literal values, and the mirror must stay byte-identical to the tokens; and `ErrorBoundary.jsx` writes each token as `var(--x, #literal)` because it is the one component that must still render if the stylesheet itself failed to load.
-- **Don't** exceed 96px in the type scale — the board total is the ceiling, and nothing else in the system may reach it.
+- **Don't** exceed 60px in the type scale — the board total is the ceiling, and nothing else in the system may reach it.

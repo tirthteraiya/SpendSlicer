@@ -3,7 +3,9 @@
 
 export const value = (v, fallback = 0) => Number(v ?? fallback);
 
+// A figure the backend did not send renders as "—", never as a real-looking $0.00.
 export const usd = (n, dec = 3) => {
+  if (n == null) return "—";
   let num = Number(n || 0);
   // CE sometimes returns tiny negative floats (-0.00001); clamp to zero before display
   if (num < 0 && Math.abs(num) < 5 * Math.pow(10, -(dec + 1))) num = 0;

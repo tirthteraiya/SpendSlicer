@@ -8,6 +8,10 @@ describe("usd", () => {
   it("clamps tiny CE negative floats to zero", () => {
     expect(usd(-0.00001)).toBe("$0.000");
   });
+  it("renders a missing figure as a dash, not $0", () => {
+    expect(usd(undefined, 2)).toBe("—");
+    expect(usd(null)).toBe("—");
+  });
   it("puts the sign before the dollar for real negatives", () => {
     expect(usd(-12.34, 2)).toBe("-$12.34");
   });
