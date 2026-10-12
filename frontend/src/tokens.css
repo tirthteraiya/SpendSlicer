@@ -169,16 +169,15 @@ a { color: inherit; text-decoration: none; }
 .rail-brand {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 1px;
   padding: 2px 8px 22px;
   min-width: 0;
 }
 .rail-mark {
-  width: 32px; height: 32px;
+  width: 22px; height: 22px;
   flex-shrink: 0;
   border-radius: var(--r-mark);
-  background: var(--ink);
-  color: var(--brand-lime);
+  color: var(--ink);
   display: grid;
   place-items: center;
 }
@@ -277,6 +276,7 @@ a { color: inherit; text-decoration: none; }
 .collapsed .rail-who-text { display: none; }
 .collapsed .rail-item { justify-content: center; padding: 10px 0; }
 .collapsed .rail-brand { justify-content: center; padding: 2px 0 18px; }
+.collapsed .rail-mark { width: 32px; height: 32px; background: var(--ink); color: var(--brand-lime); }
 .collapsed .rail-who { justify-content: center; }
 
 /* ── Board bar (top) ──────────────────────────────────────────────────── */
@@ -583,20 +583,8 @@ select.ctl {
   transition: transform var(--flap);
 }
 .flap-strip > span { height: 0.9em; line-height: 0.9em; text-align: center; }
-/* The seam is the split in split-flap. */
-.flap-cell::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0;
-  top: 50%;
-  height: 1px;
-  background: var(--rule-2);
-  opacity: 0.5;
-  pointer-events: none;
-}
 @media (prefers-reduced-motion: reduce) {
   .flap-strip { transition: none; }
-  .flap-cell::after { display: none; }
 }
 
 /* A board being re-read holds its last figures, dimmed, until the new ones
@@ -610,10 +598,6 @@ select.ctl {
 .board.is-reading .board-aside,
 .board.is-reading .xcheck-v,
 .board.is-reading .dep { opacity: 0.4; transition-duration: 200ms; }
-/* The seam is the display figure's; at 22px it reads as a strikethrough. */
-.xcheck-v .flap-cell::after,
-.board-aside-v .flap-cell::after { display: none; }
-
 /* ── Delta ────────────────────────────────────────────────────────────── */
 
 .delta {

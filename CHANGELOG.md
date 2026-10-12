@@ -8,10 +8,12 @@ Notable changes to SpendSlicer. Format follows
 
 First public release.
 
-- Final Dollar Slice identity: Manrope wordmarks, charcoal/white/slate/lime brand
+- Final Angular Slice identity: the symbol replaces the first S in Manrope
+  wordmarks, with a charcoal/white/slate/lime brand
   palette, downloadable local brand guide, and macOS/Windows/browser icons.
 - The app and landing page share the selected logo; brand accents preserve the
   dashboard's existing financial status colors.
+- Subtle landing entrances and hover motion respect reduced-motion preferences.
 
 Numbered 1.0.0 rather than 0.x deliberately. The surface people actually
 depend on — the CLI, the environment variables and the HTTP endpoints — is
@@ -52,6 +54,10 @@ usable this is while buying no real freedom.
 
 ### Fixed
 
+- **Currency figures display without a line through the digits** in both the
+  dashboard and landing page, while keeping the rolling number animation.
+- **The landing demo shows a varied testing-3 environment**, including databases,
+  servers and S3 buckets, with Top resources visible in its initial screen.
 - **Existing browser tabs reconnect automatically** after a local web server
   restart. A loopback-only same-origin handshake refreshes the generated token
   and retries rejected API requests once, restoring account and period pickers

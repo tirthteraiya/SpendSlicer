@@ -20,9 +20,9 @@ export function Shell({ page, onPage, title, children, tall = false }) {
     <div className={`demo-shell ${tall ? "demo-shell-tall" : ""}`}>
       <aside className="demo-rail" aria-hidden="true">
         <div className="rail-brand">
-          <span className="rail-mark"><BrandMark /></span>
+          <span className="rail-mark"><BrandMark size={22} /></span>
           <span className="rail-word">
-            <span className="name">SpendSlicer</span>
+            <span className="name">pendSlicer</span>
           </span>
         </div>
         <div className="rail-sect">

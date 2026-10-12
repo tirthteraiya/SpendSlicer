@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test src/demo/data.test.js"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

@@ -1,19 +1,21 @@
 # SpendSlicer · final identity kit
 
-The selected Dollar Slice logo combines an S, a dollar sign, and a diagonal slice.
+The selected Angular Slice logo is a geometric S with a diagonal slice and no
+vertical dollar stem. It supplies the first S: **logo + pendSlicer**, with no
+extra S beside it. Standalone icons contain the symbol alone.
 
 Open `index.html` for the complete visual guide. Everything works locally.
 
 ## Assets
 
-- `mark-ink.png`: approved transparent production silhouette, 1254 × 1254.
+- `mark-ink.png`: approved transparent production silhouette.
 - `mark-ui.png`: 128px optimized copy for small interface marks.
 - `mark-{ink,white,lime}.svg`: portable recolored symbol containers.
-- `wordmark-{ink,white,lime}.svg`: Manrope 800 lettering converted to vector paths.
-- `lockup-{ink,white,lime}.svg`: horizontal symbol and wordmark.
-- `stacked-{ink,white,lime}.svg`: vertical symbol and wordmark.
+- `wordmark-{ink,white,lime}.svg`: angular S followed by outlined Manrope 800 pendSlicer.
+- `lockup-{ink,white,lime}.svg`: aliases of the complete horizontal wordmark.
+- `stacked-{ink,white,lime}.svg`: vertical symbol followed by pendSlicer.
 - `app-icon.png`, `icon.ico`, `icon.icns`: desktop and browser icon assets.
-- `overview.png`: generated presentation board; production files above are authoritative.
+- `overview.png` and `overview.html`: presentation board and editable source.
 - `social-card.png` and `social-card.html`: share artwork and its editable source.
 - `approved-reference.png`: the user's chosen shape.
 - `fonts/`: locally bundled font files and their SIL Open Font Licenses.
@@ -33,9 +35,14 @@ Manrope 800 wordmark, −0.028em tracking; Manrope 800 headings, −0.032em;
 Manrope 700 figures; Manrope 400–600 interface text. Tabular numerals for money.
 JetBrains Mono 400 for code and literal identifiers only. Fonts remain local.
 
-Clear space: at least one stem-width. Symbol: 24px preferred minimum.
+Clear space: at least one diagonal band-width around standalone marks. Symbol:
+24px preferred minimum; integrated interface lettering may use a 22px canvas.
 Horizontal lockup: 160px preferred minimum. Never stretch, rotate, add effects,
-change the diagonal gap, or substitute a font dollar character.
+change the diagonal gap, or add a vertical dollar stem. Do not prepend the symbol
+to the full written name. Ordinary prose and accessible names remain SpendSlicer.
+
+Landing motion uses short entrances, staggered service rows and small hover lifts.
+All decorative motion is disabled when reduced motion is requested.
 
 ## Reproduction
 

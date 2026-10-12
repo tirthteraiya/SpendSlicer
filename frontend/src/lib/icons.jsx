@@ -97,7 +97,7 @@ export const IconSearch = (p) => (
   <S {...p}><circle cx="8.75" cy="8.75" r="5.25" /><path d="M12.75 12.75 17 17" /></S>
 );
 
-/* The approved dollar-slice silhouette; alpha masking keeps every color identical. */
+/* The approved angular S; alpha masking keeps every color identical. */
 export const Mark = ({ size = 28 }) => (
   <span className="brand-symbol" aria-hidden="true" style={{
     width: size, height: size, backgroundColor: "currentColor",

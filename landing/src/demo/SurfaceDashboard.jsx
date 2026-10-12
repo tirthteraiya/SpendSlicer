@@ -20,12 +20,15 @@ const ABBREV = {
   "Amazon Relational Database Service": "RDS",
   "Amazon Simple Storage Service": "S3",
   "Elastic Load Balancing": "ELB",
+  "Amazon OpenSearch Service": "OpenSearch",
+  "Amazon Elastic Container Service": "ECS",
 };
 const abbrev = (n) => ABBREV[n] || shortService(n);
 
 const TOP = SERVICES.slice(0, 6);
 /* The real Dashboard asks the backend for the top 10; match it. */
 const TOP_RESOURCES = [...RESOURCES].sort((a, b) => b.cost - a.cost).slice(0, 10);
+const resourceMax = Math.max(...TOP_RESOURCES.map((r) => r.cost));
 const mix = TOP
   .map((s, i) => ({ name: abbrev(s.name), value: s.cost, color: PALETTE[i % PALETTE.length] }))
   .concat([{
@@ -37,24 +40,6 @@ const mix = TOP
 export function SurfaceDashboard() {
   return (
     <>
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Spend over the period</h2>
-            <p>
-              Peak {usd(peak.Spend, 2)} on {peak.label} · average {usd(average, 2)} ·{" "}
-              {TREND.length} samples
-            </p>
-          </div>
-          <Mark kind="exact" />
-        </div>
-        <div className="panel-body">
-          <TrendBars data={TREND} keys={["Spend"]} height={248} />
-        </div>
-      </section>
-
-      <div className="void-lg" />
-
       <div className="split">
         <section className="tt-wrap">
           <div className="panel-head">
@@ -65,7 +50,7 @@ export function SurfaceDashboard() {
             <Mark kind="estimated" />
           </div>
           <div className="tt-scroll">
-            <table className="tt">
+            <table className="tt tt-mass demo-resource-table">
               <thead>
                 <tr>
                   <th>Resource</th>
@@ -75,9 +60,9 @@ export function SurfaceDashboard() {
               </thead>
               <tbody>
                 {TOP_RESOURCES.map((r) => (
-                  <tr key={r.resource_id}>
+                  <tr key={r.resource_id} style={{ "--mass": r.cost / resourceMax }}>
                     <td className="tt-lead">{r.name}</td>
-                    <td className="tt-quiet col">{shortService(r.service)}</td>
+                    <td className="tt-quiet col">{abbrev(r.service)}</td>
                     <td className="num"><span className="num-strong">{usd(r.cost, 2)}</span></td>
                   </tr>
                 ))}
@@ -99,6 +84,26 @@ export function SurfaceDashboard() {
           </div>
         </section>
       </div>
+
+      <div className="void-lg" />
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Spend over the period</h2>
+            <p>
+              Peak {usd(peak.Spend, 2)} on {peak.month} · average {usd(average, 2)} ·{" "}
+              {TREND.length} samples
+            </p>
+          </div>
+          <Mark kind="exact" />
+        </div>
+        <div className="panel-body">
+          <TrendBars data={TREND} keys={["Spend"]} height={248} />
+        </div>
+      </section>
+
+      <div className="void-lg" />
 
       <Legend />
     </>

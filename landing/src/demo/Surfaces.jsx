@@ -7,6 +7,7 @@ import { Shell, ShellTabs } from "./Shell";
 import { SurfaceDashboard } from "./SurfaceDashboard";
 import { SurfaceServices } from "./SurfaceServices";
 import { SurfaceResources } from "./SurfaceResources";
+import { PROFILE, RESOURCES, SERVICES } from "./data";
 
 const TABS = [
   { key: "dashboard", label: "Dashboard", title: "Dashboard", Body: SurfaceDashboard },
@@ -21,6 +22,7 @@ export function Surfaces() {
 
   return (
     <div className="surfaces">
+      <p className="demo-note">Sample data · {PROFILE} · {SERVICES.length} services · {RESOURCES.length} resources</p>
       <ShellTabs tabs={TABS} active={active} onSelect={setActive} label="Product screens" />
       <div
         role="tabpanel"

@@ -1,5 +1,5 @@
 /* Services, live. Rows expand to the usage types driving them, exactly as
-   ServicesPage does. Only the three services with composition data in the
+   ServicesPage does. Only the services with composition data in the
    demo dataset expand; the rest behave as they do before a composition
    fetch resolves. */
 

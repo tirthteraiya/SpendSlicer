@@ -49,6 +49,10 @@ jobs:
         working-directory: landing
         run: npm ci
 
+      - name: Test sample data
+        working-directory: landing
+        run: npm test
+
       - name: Build
         working-directory: landing
         run: npm run build

@@ -3,7 +3,7 @@
    the FastAPI backend serves, so the demo components are the same shape as
    the real pages.
 
-   The account tells one story on purpose: a retail platform with an edge
+   The account tells one story on purpose: a testing environment with an edge
    (CloudFront, ALB), an API tier (EC2, ECS), an async spine (SQS, SNS,
    Lambda), a data tier (RDS, OpenSearch, DynamoDB, ElastiCache), and the
    quiet ops services every real account carries. Two rows are deliberately
@@ -24,7 +24,7 @@
    the bottom will tell you in the console if you did not.
    ───────────────────────────────────────────────────────────────────── */
 
-export const PROFILE = "meridian-retail-prod";
+export const PROFILE = "testing-3";
 export const PERIOD = "mtd";
 
 export const CE_TOTAL = 10693.09;
@@ -147,27 +147,27 @@ export const COMPOSITION = {
 /* Named resources. This is the layer SpendSlicer adds, and the sum of it is
    exactly the attributed figure on the board. */
 export const RESOURCES = [
-  { name: "checkout-api-01",                      service: "Amazon Elastic Compute Cloud - Compute", resource_id: "i-0f3a9c2b71de4408a",                    cost: 892.44,   state: "running" },
-  { name: "checkout-api-02",                      service: "Amazon Elastic Compute Cloud - Compute", resource_id: "i-0b7e14da9c3f2260d",                    cost: 741.19,   state: "running" },
-  { name: "catalog-worker-03",                    service: "Amazon Elastic Compute Cloud - Compute", resource_id: "i-04c81fb37ae95d112",                    cost: 411.87,   state: "stopped" },
-  { name: "orders-primary",                       service: "Amazon Relational Database Service",     resource_id: "db-MERIDIANORDERS01",                    cost: 1088.60,  state: "available" },
-  { name: "orders-replica-1b",                    service: "Amazon Relational Database Service",     resource_id: "db-MERIDIANORDERSRR2",                   cost: 604.22,   state: "available" },
-  { name: "catalog-search-prod",                  service: "Amazon OpenSearch Service",              resource_id: "catalog-search-prod",                    cost: 618.44,   state: null },
-  { name: "meridian-product-media",               service: "Amazon Simple Storage Service",          resource_id: "meridian-product-media",                 cost: 486.30,   state: null },
-  { name: "meridian-cloudtrail",                  service: "Amazon Simple Storage Service",          resource_id: "meridian-cloudtrail-820947116534",       cost: 188.44,   state: null },
-  { name: "egress-nat-1a",                        service: "EC2 - Other",                            resource_id: "nat-0d92f4c8a17b3e650",                  cost: 330.86,   state: "available" },
-  { name: "checkout-nat-eip-1a",                  service: "EC2 - Other",                            resource_id: "eipalloc-07be13d9c4a82f5e1",             cost: 21.40,    state: "associated" },
+  { name: "testing-3-mcp-server",                      service: "Amazon Elastic Compute Cloud - Compute", resource_id: "i-0f3a9c2b71de4408a",                    cost: 892.44,   state: "running" },
+  { name: "testing-3-creator-server",                      service: "Amazon Elastic Compute Cloud - Compute", resource_id: "i-0b7e14da9c3f2260d",                    cost: 741.19,   state: "running" },
+  { name: "testing-3-worker",                    service: "Amazon Elastic Compute Cloud - Compute", resource_id: "i-04c81fb37ae95d112",                    cost: 411.87,   state: "stopped" },
+  { name: "testing-3-db",                       service: "Amazon Relational Database Service",     resource_id: "db-TESTING3PRIMARY01",                    cost: 1088.60,  state: "available" },
+  { name: "testing-3-db-replica",                    service: "Amazon Relational Database Service",     resource_id: "db-TESTING3REPLICA02",                   cost: 604.22,   state: "available" },
+  { name: "testing-3-search",                  service: "Amazon OpenSearch Service",              resource_id: "testing-3-search",                    cost: 618.44,   state: null },
+  { name: "testing-3-s3-bucket",               service: "Amazon Simple Storage Service",          resource_id: "testing-3-s3-bucket",                 cost: 486.30,   state: null },
+  { name: "testing-3-audit-logs",                  service: "Amazon Simple Storage Service",          resource_id: "testing-3-audit-logs-123456789012",       cost: 188.44,   state: null },
+  { name: "testing-3-nat-gateway",                        service: "EC2 - Other",                            resource_id: "nat-0d92f4c8a17b3e650",                  cost: 330.86,   state: "available" },
+  { name: "testing-3-nat-eip",                  service: "EC2 - Other",                            resource_id: "eipalloc-07be13d9c4a82f5e1",             cost: 21.40,    state: "associated" },
   { name: "EC2 - Other \u2014 unattributed remainder", service: "EC2 - Other",                            resource_id: "ce-remainder:EC2 - Other",               cost: 42.44,    state: null },
-  { name: "shop.meridian.io",                     service: "Amazon CloudFront",                      resource_id: "E1QW7LXK4PZ9VN",                         cost: 421.55,   state: null },
-  { name: "cart-service",                         service: "Amazon Elastic Container Service",       resource_id: "service/meridian-prod/cart-service",     cost: 366.90,   state: "ACTIVE" },
-  { name: "cart-sessions",                        service: "Amazon DynamoDB",                        resource_id: "cart-sessions",                          cost: 288.14,   state: null },
-  { name: "public-alb",                           service: "Elastic Load Balancing",                 resource_id: "app/public-alb/7c3d1ab99e40f2aa",        cost: 244.73,   state: null },
-  { name: "payment-gateway",                      service: "AWS Lambda",                             resource_id: "payment-gateway",                        cost: 188.30,   state: null },
-  { name: "inventory-sync",                       service: "AWS Lambda",                             resource_id: "inventory-sync",                         cost: 96.44,    state: null },
-  { name: "webhook-dispatcher",                   service: "AWS Lambda",                             resource_id: "webhook-dispatcher",                     cost: 62.18,    state: null },
-  { name: "order-receipt-mailer",                 service: "AWS Lambda",                             resource_id: "order-receipt-mailer",                   cost: 41.09,    state: null },
-  { name: "order-events",                         service: "Amazon Simple Queue Service",            resource_id: "order-events",                           cost: 28.44,    state: null },
-  { name: "order-notifications",                  service: "Amazon Simple Notification Service",     resource_id: "order-notifications",                    cost: 16.22,    state: null },
+  { name: "cdn.testing-3.example.invalid",                     service: "Amazon CloudFront",                      resource_id: "E1QW7LXK4PZ9VN",                         cost: 421.55,   state: null },
+  { name: "testing-3-app-service",                         service: "Amazon Elastic Container Service",       resource_id: "service/testing-3/app-service",     cost: 366.90,   state: "ACTIVE" },
+  { name: "testing-3-sessions",                        service: "Amazon DynamoDB",                        resource_id: "testing-3-sessions",                          cost: 288.14,   state: null },
+  { name: "shared-loadbalancer-testing-3-env",                           service: "Elastic Load Balancing",                 resource_id: "app/shared-loadbalancer-testing-3-env/7c3d1ab99e40f2aa",        cost: 244.73,   state: null },
+  { name: "testing-3-payment-handler",                      service: "AWS Lambda",                             resource_id: "testing-3-payment-handler",                        cost: 188.30,   state: null },
+  { name: "testing-3-inventory-sync",                       service: "AWS Lambda",                             resource_id: "testing-3-inventory-sync",                         cost: 96.44,    state: null },
+  { name: "testing-3-webhook-dispatcher",                   service: "AWS Lambda",                             resource_id: "testing-3-webhook-dispatcher",                     cost: 62.18,    state: null },
+  { name: "testing-3-receipt-mailer",                 service: "AWS Lambda",                             resource_id: "testing-3-receipt-mailer",                   cost: 41.09,    state: null },
+  { name: "testing-3-events",                         service: "Amazon Simple Queue Service",            resource_id: "testing-3-events",                           cost: 28.44,    state: null },
+  { name: "testing-3-notifications",                  service: "Amazon Simple Notification Service",     resource_id: "testing-3-notifications",                    cost: 16.22,    state: null },
   { name: "Amazon CloudWatch",                    service: "Amazon CloudWatch",                      resource_id: "ce:Amazon CloudWatch",                   cost: 168.42,   state: null },
   { name: "AWS Secrets Manager",                  service: "AWS Secrets Manager",                    resource_id: "ce:AWS Secrets Manager",                 cost: 18.94,    state: null },
   { name: "Amazon EC2 Container Registry (ECR)",  service: "Amazon EC2 Container Registry (ECR)",    resource_id: "ce:Amazon EC2 Container Registry (ECR)", cost: 14.73,    state: null },

@@ -115,11 +115,10 @@ code.mono {
   height: 100%; display: flex; align-items: center; gap: 32px;
   max-width: var(--page-w); margin: 0 auto; padding-inline: var(--gut);
 }
-.brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.brand { display: flex; align-items: center; gap: 1px; flex: none; }
 .brand-mark {
-  width: 30px; height: 30px; flex: none;
-  border-radius: var(--r-mark);
-  background: var(--ink); color: var(--brand-lime);
+  width: 22px; height: 22px; flex: none;
+  color: var(--ink);
   display: grid; place-items: center;
 }
 .brand-word { display: flex; align-items: center; line-height: 1; }
@@ -245,6 +244,8 @@ code.mono {
 
 /* ── Live surfaces ───────────────────────────────────────────────────── */
 
+.demo-note { margin: 0 0 14px; color: var(--ink-4); font-size: 13px; }
+
 .demo-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 .demo-tab {
   height: 38px; padding: 0 16px;
@@ -295,12 +296,20 @@ code.mono {
 /* Wider right column than the app uses, so the donut legend has room for
    full service names instead of ellipsising them. */
 .demo-shell .split { grid-template-columns: 1.15fr 1fr; }
+.demo-resource-table { table-layout: fixed; }
+.demo-resource-table th:first-child { width: 50%; }
+.demo-resource-table th:nth-child(2) { width: 22%; }
+.demo-resource-table .tt-lead { overflow-wrap: anywhere; }
 
 @media (max-width: 900px) {
   .demo-shell { grid-template-columns: 1fr; height: 560px; }
   .demo-rail { display: none; }
   .demo-scroll { padding: 20px 16px 32px; }
   .demo-shell .split { grid-template-columns: 1fr; }
+  .demo-resource-table { font-size: 12px; }
+  .demo-resource-table th, .demo-resource-table td { padding: 11px 8px; }
+  .demo-resource-table th:first-child { width: 46%; }
+  .demo-resource-table th:nth-child(2) { width: 24%; }
 }
 
 /* ── Meter ───────────────────────────────────────────────────────────── */
@@ -419,6 +428,17 @@ code.mono {
    page is read. Both collapse to static under reduced motion. */
 
 @media (prefers-reduced-motion: no-preference) {
+  .brand-mark { transition: transform 240ms ease; }
+  .brand:hover .brand-mark { transform: translateY(-1px); }
+  .lp-btn:hover { transform: translateY(-2px); }
+  .demo-tab { transition: background 180ms ease, transform 180ms ease; }
+  .demo-tab:hover { transform: translateY(-1px); }
+  .demo-scroll > * { animation: surface-enter 320ms ease-out both; }
+  .hero-demo .dep-row { animation: resource-enter 440ms ease-out both; }
+  .hero-demo .dep-row:nth-child(2) { animation-delay: 80ms; }
+  .hero-demo .dep-row:nth-child(3) { animation-delay: 120ms; }
+  .hero-demo .dep-row:nth-child(4) { animation-delay: 160ms; }
+  .hero-demo .dep-row:nth-child(5) { animation-delay: 200ms; }
   .rise { opacity: 0; transform: translateY(16px); }
   .rise.seen { opacity: 1; transform: none; transition: opacity 520ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)), transform 520ms cubic-bezier(0.16, 1, 0.3, 1); }
   .lift > * { opacity: 0; animation: lift 620ms cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -428,6 +448,8 @@ code.mono {
   .hero-demo { opacity: 0; animation: lift 780ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both; }
 }
 @keyframes lift { from { transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes surface-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes resource-enter { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 
 /* ── Mobile ──────────────────────────────────────────────────────────── */
 

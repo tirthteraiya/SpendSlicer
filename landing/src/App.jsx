@@ -62,8 +62,8 @@ function useReveal() {
 function Wordmark() {
   return (
     <a className="brand" href="#top" aria-label="SpendSlicer, home">
-      <span className="brand-mark" aria-hidden="true"><BrandMark size={26} /></span>
-      <span className="brand-word"><b>SpendSlicer</b></span>
+      <span className="brand-mark" aria-hidden="true"><BrandMark size={22} /></span>
+      <span className="brand-word" aria-hidden="true"><b>pendSlicer</b></span>
     </a>
   );
 }
@@ -106,7 +106,7 @@ function Hero() {
         </div>
 
         <div className="hero-demo">
-          <Board rows={3} />
+          <Board rows={5} />
           <p className="demo-tag">
             Live, running in this page. Sample data, not a real account.
           </p>

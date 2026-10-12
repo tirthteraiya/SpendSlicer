@@ -166,10 +166,10 @@ function RailNav({ page, setPage, onPick, collapsed }) {
 function Rail({ page, setPage, profile, collapsed, setCollapsed }) {
   return (
     <aside className="rail">
-      <div className="rail-brand">
-        <span className="rail-mark"><BrandMark /></span>
-        <span className="rail-word">
-          <span className="name">SpendSlicer</span>
+      <div className="rail-brand" aria-label="SpendSlicer">
+        <span className="rail-mark"><BrandMark size={22} /></span>
+        <span className="rail-word" aria-hidden="true">
+          <span className="name">pendSlicer</span>
         </span>
       </div>
       <button
@@ -214,10 +214,10 @@ function MobileNav({ open, setOpen, page, setPage, profile }) {
       onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
     >
       <div className="sheet-body">
-        <div className="rail-brand">
-          <span className="rail-mark"><BrandMark /></span>
+        <div className="rail-brand" aria-label="SpendSlicer">
+          <span className="rail-mark"><BrandMark size={22} /></span>
           <span className="rail-word">
-            <span className="name">SpendSlicer</span>
+            <span className="name" aria-hidden="true">pendSlicer</span>
             <span className="where">{profile}</span>
           </span>
         </div>

@@ -178,7 +178,9 @@ components:
 
 ## Final brand identity
 
-The approved Dollar Slice mark combines a dollar sign, an S, and one diagonal cut.
+The approved Angular Slice mark is a sharp geometric S with one diagonal cut and
+no vertical dollar stem. The symbol replaces the first S in the wordmark:
+logo + “pendSlicer”. Never prepend a logo to the complete written brand name.
 Production assets and typography live in `branding/kit/`; `branding/kit/index.html`
 is the visual usage guide. The logo uses Manrope 800 with −0.028em tracking.
 The dashboard's existing Manrope and JetBrains Mono roles remain authoritative.
@@ -193,6 +195,9 @@ The symbol is a high-resolution raster; outlined wordmarks are vector lettering.
 The standalone identity guide uses a presentation scale of 13, 15, 16, 20, 24,
 36, and 52px; its app-icon preview has a 34px presentation mask. These are
 guide-only applications, not changes to the dashboard's type or radius scale.
+Landing motion adds short service-row entrances, tab-content fades and 1–2px
+hover lifts. Reduced-motion users receive static content. Figures keep their
+existing rolling transitions without any line crossing the digits.
 
 ## Overview
 
@@ -449,10 +454,9 @@ rather than repainting silently.
 ### Split-Flap Numerals (signature motion)
 The one authored moment. Digits in a changed figure roll to their new value on a
 520ms cubic-bezier, staggered 34ms per digit; separators, currency marks, and
-letters stay fixed. A 1px 50%-opacity seam across each cell is the split in
-split-flap. The full value is exposed to assistive technology as one string so it
+letters stay fixed. No decorative seam crosses the digits. The full value is exposed to assistive technology as one string so it
 is never read out digit by digit. Under `prefers-reduced-motion` the transition
-and the seam are both dropped.
+is dropped.
 
 It rolls on the board's headline facts: the display figure, the board aside
 (previous period, forecast), and the three cross-check values. Cells are keyed
@@ -462,8 +466,7 @@ last figures at 40% opacity with `aria-busy` while the cue strip says "Period
 changed", then the new figures roll in at full ink and the departure rows' mass
 bars slide to their new widths. Skeletons appear only on a first load with
 nothing to hold. The dim stays under reduced motion, because it is state, not
-movement. The seam belongs to the display figure only; at cross-check and aside
-sizes it would read as a strikethrough.
+movement. No line or overlay crosses a printed figure.
 
 ### Banners
 
