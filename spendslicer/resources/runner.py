@@ -8,6 +8,7 @@ import logging
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import timezone
 from typing import Any
 
 import boto3
@@ -87,6 +88,14 @@ _REMAINDER_POOLS: list[tuple[tuple[str, ...], str, str]] = [
     (("Lambda",), "AWS Lambda", "Lambda"),
     (("DynamoDB",), "Amazon DynamoDB", "DynamoDB"),
     (("S3",), "Amazon Simple Storage Service", "S3"),
+    # Formula-priced services: without a pool, a failed unit or an under-priced
+    # formula made their CE dollars vanish from the Resources total.
+    (("ElastiCache",), "Amazon ElastiCache", "ElastiCache"),
+    (("SecretsManager",), "AWS Secrets Manager", "SecretsManager"),
+    (("ECR",), "Amazon EC2 Container Registry (ECR)", "ECR"),
+    (("EFS",), "Amazon Elastic File System", "EFS"),
+    (("CloudFront",), "Amazon CloudFront", "CloudFront"),
+    (("Route53",), "Amazon Route 53", "Route53"),
 ]
 
 
@@ -195,14 +204,14 @@ def _service_region_totals(
     filt_parts.append({"Dimensions": {"Key": "SERVICE", "Values": service_names}})
     combined = {"And": filt_parts} if len(filt_parts) > 1 else filt_parts[0]
 
+    start_s, end_s = TimeWindow(
+        window_start.replace(tzinfo=timezone.utc), window_end.replace(tzinfo=timezone.utc)
+    ).iso()
     out: dict[tuple[str, str], float] = {}
     token = None
     while True:
         kwargs = {
-            "TimePeriod": {
-                "Start": window_start.strftime("%Y-%m-%d"),
-                "End": window_end.strftime("%Y-%m-%d"),
-            },
+            "TimePeriod": {"Start": start_s, "End": end_s},
             "Granularity": "MONTHLY",
             "Metrics": ["UnblendedCost"],
             "GroupBy": [
@@ -263,7 +272,7 @@ def _reconcile_pools(
     )
     _rescale_rows(
         buckets.get("EBS", []), ec2_other_pool,
-        "EBS", incomplete="EBS" in failed_services,
+        "EBS", incomplete=bool({"EBS", "NATGateway"} & failed_services),
     )
 
     # RDS / ELB rescaled to their own CE totals, clamped.
@@ -291,7 +300,7 @@ def _reconcile_pools(
     # When the totals were already REGION-scoped (``lambda_ddb_region_scoped``),
     # each region split its own bill and the combined sum is already right —
     # renormalizing here would smear it back to total/region_count.
-    for label in () if lambda_ddb_region_scoped else ("Lambda", "DynamoDB"):
+    for label in () if lambda_ddb_region_scoped else ("Lambda", "DynamoDB", "ECR"):
         rows = buckets.get(label, [])
         ce_tot = ce_total_by_service.get(SERVICE_TO_CE.get(label, ""), 0.0)
         if not rows or ce_tot <= 0 or label in failed_services:
@@ -440,6 +449,8 @@ def enumerate_all(
         )
         log.debug("CE get_cost_by_service traceback", exc_info=True)
         ce_total_by_service = {}
+        if errors is not None:
+            errors.append({"service": "Cost Explorer totals", "error": type(exc).__name__})
 
     def ce_total(label: str) -> float:
         return ce_total_by_service.get(SERVICE_TO_CE.get(label, ""), 0.0)
@@ -504,6 +515,35 @@ def enumerate_all(
     with contextlib.suppress(Exception):
         frozen_global.client("sts")
 
+    # Region-scope the Lambda/DynamoDB totals with one extra CE call so each
+    # region splits ITS OWN bill (handing every region the account-wide total
+    # made each region show exactly total/region_count regardless of usage).
+    # Falls back to the account-wide totals + post-fan-out normalization when
+    # the call fails or only one region is scanned (already correctly scoped).
+    # EC2 rides on the same call: regions with no EC2-Compute spend skip their
+    # per-region EC2 query (one paid CE call each), which on most accounts is
+    # all but one or two of ~17 regions.
+    _split = {"Lambda": "AWS Lambda", "DynamoDB": "Amazon DynamoDB",
+              "ECR": "Amazon EC2 Container Registry (ECR)",
+              "EC2": "Amazon Elastic Compute Cloud - Compute"}
+    _split_names = [ce for lbl, ce in _split.items() if want_it(lbl) and ce_total(lbl) > 0]
+    lambda_ddb_regional: dict[tuple[str, str], float] = {}
+    regional_ok = False
+    if _split_names and len(regions) > 1:
+        try:
+            lambda_ddb_regional = _service_region_totals(
+                ce_raw, ws, we, totals_spec, _split_names,
+            )
+            regional_ok = True
+        except Exception as exc:
+            log.warning(
+                "SERVICE x REGION totals for Lambda/DynamoDB failed (%s); "
+                "falling back to account-wide totals + normalization",
+                type(exc).__name__,
+            )
+            lambda_ddb_regional = {}
+    region_scoped = regional_ok
+
     if want_it("EC2"):
         # Submit ONE EC2 work unit PER REGION instead of
         # a single unit that loops every region serially on one thread (each
@@ -517,16 +557,24 @@ def enumerate_all(
                 ts, ce_raw, ws, we, [reg], spec, instances_provider=_instances_for,
             )
         for reg in regions:
+            # Skip only when CE positively says there is nothing to split; a
+            # failed totals call keeps every region.
+            if ce_total_by_service and ce_total("EC2") <= 0:
+                continue
+            if regional_ok and lambda_ddb_regional.get((_split["EC2"], reg), 0.0) <= 0:
+                continue
             work.append(("EC2", _mk_ec2(reg)))
 
     # CloudFront and Route 53 have no regional endpoint: list_distributions and
     # list_hosted_zones return the same set from every region. Submitting these
     # per region would count every distribution and zone seventeen times.
-    if want_it("CloudFront"):
+    # A single-region view filters totals to that region, so global services
+    # would show formula-priced rows with no matching CE dollars.
+    if want_it("CloudFront") and region == ALL_REGIONS:
         work.append(("CloudFront", lambda: attribute_cloudfront(
             frozen_global, ws, we, ce_total("CloudFront"),
         )))
-    if want_it("Route53"):
+    if want_it("Route53") and region == ALL_REGIONS:
         work.append(("Route53", lambda: attribute_route53(frozen_global, ws, we)))
 
     if want_it("S3"):
@@ -544,27 +592,6 @@ def enumerate_all(
         ts = frozen_by_region[reg]
         return lambda: attribute_ebs(ts, ws, we, reg, _names_for(reg))
 
-    # Region-scope the Lambda/DynamoDB totals with one extra CE call so each
-    # region splits ITS OWN bill (handing every region the account-wide total
-    # made each region show exactly total/region_count regardless of usage).
-    # Falls back to the account-wide totals + post-fan-out normalization when
-    # the call fails or only one region is scanned (already correctly scoped).
-    lambda_ddb_regional: dict[tuple[str, str], float] = {}
-    if (want_it("Lambda") or want_it("DynamoDB") or want_it("ECR")) and len(regions) > 1:
-        try:
-            lambda_ddb_regional = _service_region_totals(
-                ce_raw, ws, we, totals_spec,
-                ["AWS Lambda", "Amazon DynamoDB",
-                 "Amazon EC2 Container Registry (ECR)"],
-            )
-        except Exception as exc:
-            log.warning(
-                "SERVICE x REGION totals for Lambda/DynamoDB failed (%s); "
-                "falling back to account-wide totals + normalization",
-                type(exc).__name__,
-            )
-            lambda_ddb_regional = {}
-    region_scoped = bool(lambda_ddb_regional)
 
     def _regional_total(ce_name: str, reg: str, label: str) -> float:
         if lambda_ddb_regional:

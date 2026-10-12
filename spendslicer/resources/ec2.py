@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 from botocore.config import Config
 
 from spendslicer.core.filters import CostFilterSpec, build_ce_filter, pre_credit_gross
+from spendslicer.core.types import TimeWindow
 
 from .base import AttributedResource, clamp_window, hours_between, tag_name, tags_to_dict
 
@@ -129,8 +130,11 @@ def _attribute_from_usage_type(
     # Combine base_filter + SERVICE + REGION under a single And so all parts apply.
     combined = {"And": filt_parts} if len(filt_parts) > 1 else filt_parts[0]
 
-    start_s = window_start.strftime("%Y-%m-%d")
-    end_s = window_end.strftime("%Y-%m-%d")
+    # Same date rounding as the service totals (TimeWindow.iso): a plain
+    # strftime dropped today's spend and sent Start == End on the 1st.
+    start_s, end_s = TimeWindow(
+        window_start.replace(tzinfo=timezone.utc), window_end.replace(tzinfo=timezone.utc)
+    ).iso()
 
     ce_by_key: dict = defaultdict(lambda: {"cost": 0.0, "hours": 0.0})
     # Usage types under EC2-Compute that aren't per-instance box usage

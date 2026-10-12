@@ -15,7 +15,7 @@ import time
 from threading import Lock
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 _CACHE: dict[str, dict] = {}
 _LOCK = Lock()
@@ -141,7 +141,8 @@ def _fetch_from_api(session: boto3.Session, service_code: str, filters: list[dic
                 if price is not None:
                     return float(price)
         return None
-    except (ClientError, KeyError, ValueError, json.JSONDecodeError):
+    except (ClientError, BotoCoreError, KeyError, ValueError, json.JSONDecodeError):
+        # BotoCoreError: a pricing-API timeout must not fail the whole unit.
         return None
 
 

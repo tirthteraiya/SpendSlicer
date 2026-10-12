@@ -145,7 +145,16 @@ def get_budget_findings(
                 status = BudgetStatus.OK
                 breach_reason: str | None = None
 
-                if actual is not None and actual > limit:
+                # RI/Savings Plans utilisation and coverage budgets are
+                # percentages where falling BELOW the target is the problem;
+                # the dollar rule below read them backwards.
+                if b.get("BudgetType", "").endswith(("_UTILIZATION", "_COVERAGE")):
+                    if actual is None:
+                        status = BudgetStatus.UNKNOWN
+                    elif actual < limit:
+                        status = BudgetStatus.BREACHED
+                        breach_reason = f"Actual {actual:.1f}% is below the {limit:.1f}% target"
+                elif actual is not None and actual > limit:
                     status = BudgetStatus.BREACHED
                     breach_reason = (
                         f"Actual spend ${actual:.2f} exceeds budget limit ${limit:.2f}"

@@ -282,6 +282,28 @@ def test_budget_status_ok_below_threshold():
     assert results[0].status == BudgetStatus.OK
 
 
+def test_utilization_budget_breaches_when_below_target():
+    session = _session()
+    sts = MagicMock()
+    sts.get_caller_identity.return_value = {"Account": "123456789012"}
+    budgets_client = MagicMock()
+
+    def budget(name, actual):
+        return {
+            "BudgetName": name, "BudgetType": "RI_UTILIZATION", "TimeUnit": "MONTHLY",
+            "BudgetLimit": {"Amount": "80", "Unit": "PERCENTAGE"},
+            "CalculatedSpend": {"ActualSpend": {"Amount": actual}},
+        }
+
+    budgets_client.get_paginator.return_value.paginate.return_value = [
+        {"Budgets": [budget("low", "50"), budget("high", "95")]}
+    ]
+    session.client.side_effect = lambda service, **kw: sts if service == "sts" else budgets_client
+
+    by_name = {r.budget_name: r.status for r in get_budget_findings(session)}
+    assert by_name == {"low": BudgetStatus.BREACHED, "high": BudgetStatus.OK}
+
+
 # ---------------------------------------------------------------------------
 # Audit runner
 # ---------------------------------------------------------------------------
