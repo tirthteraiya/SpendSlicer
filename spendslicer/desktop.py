@@ -53,34 +53,26 @@ def _storage_path() -> Path:
     return root / "webview"
 
 
-def _free_port() -> int:
-    """Ask the OS for an unused loopback port."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return int(s.getsockname()[1])
-
-
 def _wait_until_serving(url: str, token: str, timeout: float) -> bool:
     """Poll until the server answers, or the timeout expires."""
     deadline = time.monotonic() + timeout
     request = urllib.request.Request(url, headers={"X-SpendSlicer-Token": token})
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(request, timeout=2) as resp:  # noqa: S310
-                if resp.status < 500:
+            with opener.open(request, timeout=2) as resp:  # noqa: S310
+                if resp.status == 200:
                     return True
-        except urllib.error.HTTPError as exc:
-            # Any HTTP status means the app is up and routing.
-            if exc.code < 500:
-                return True
+        except urllib.error.HTTPError:
+            pass  # a 401 or 404 is not a usable dashboard
         except (urllib.error.URLError, OSError, ConnectionError):
             pass  # not listening yet
         time.sleep(0.15)
     return False
 
 
-def _start_server(host: str, port: int) -> threading.Thread:
-    """Run uvicorn in a daemon thread and return it."""
+def _start_server(host: str, port: int):
+    """Reserve the socket before launching, so another process cannot take it."""
     import uvicorn
 
     from spendslicer.web.app import app
@@ -93,9 +85,16 @@ def _start_server(host: str, port: int) -> threading.Thread:
         access_log=False,
     )
     server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True, name="spendslicer-server")
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        listener.bind((host, port))
+    except OSError:
+        listener.close()
+        raise
+    port = int(listener.getsockname()[1])
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True, name="spendslicer-server")
     thread.start()
-    return thread
+    return server, thread, port
 
 
 def _open_window(url: str) -> bool:
@@ -107,6 +106,7 @@ def _open_window(url: str) -> bool:
         return False
 
     try:
+        webview.settings["ALLOW_DOWNLOADS"] = True
         webview.create_window(
             WINDOW_TITLE,
             url,
@@ -115,10 +115,8 @@ def _open_window(url: str) -> bool:
             min_size=(1024, 700),
             confirm_close=False,
         )
-        # private_mode=True (pywebview's default) throws away localStorage on
-        # every quit, which would drop the dashboard's stale-while-revalidate
-        # cache and force a full Cost Explorer refetch — real money — on each
-        # launch. Persist it under the same cache dir the backend uses.
+        # Persist profile/period preferences across native app launches.
+        # Financial cache entries live in the backend's account-bound SQLite cache.
         storage = _storage_path()
         storage.mkdir(parents=True, exist_ok=True)
         # Blocks until the user closes the window.
@@ -144,17 +142,29 @@ def main() -> int:
         )
 
     host = "127.0.0.1"
-    port = int(os.environ.get("SPENDSLICER_PORT") or 0) or _free_port()
+    try:
+        port = int(os.environ.get("SPENDSLICER_PORT") or 0)
+        if not 0 <= port <= 65535:
+            raise ValueError("port must be between 0 and 65535")
+    except ValueError:
+        log.error("SPENDSLICER_PORT must be an integer between 0 and 65535.")
+        return 1
 
     # Must be set before spendslicer.web.app is imported: the app reads the token
     # at request time, but starting clean avoids any import-order surprise.
     token = os.environ.get("SPENDSLICER_AUTH_TOKEN") or secrets.token_urlsafe(32)
     os.environ["SPENDSLICER_AUTH_TOKEN"] = token
 
-    _start_server(host, port)
+    try:
+        server, thread, port = _start_server(host, port)
+    except OSError as exc:
+        log.error("Could not start the local server: %s", exc)
+        return 1
 
     base = f"http://{host}:{port}"
     if not _wait_until_serving(f"{base}/app", token, _STARTUP_TIMEOUT_SECONDS):
+        server.should_exit = True
+        thread.join(timeout=5)
         # Windowed builds have sys.stderr = None; writing to it would crash.
         if sys.stderr:
             sys.stderr.write(
@@ -165,14 +175,18 @@ def main() -> int:
 
     app_url = f"{base}/app?token={token}"
 
-    if not _open_window(app_url):
-        import webbrowser
+    try:
+        if not _open_window(app_url):
+            import webbrowser
 
-        webbrowser.open(app_url)
-        print(f"SpendSlicer is running at {base}/app")
-        print("Close this window (or press Ctrl+C) to stop the server.")
-        with contextlib.suppress(KeyboardInterrupt):
-            threading.Event().wait()
+            webbrowser.open(app_url)
+            print(f"SpendSlicer is running at {base}/app")
+            print("Press Ctrl+C to stop the server.")
+            with contextlib.suppress(KeyboardInterrupt):
+                threading.Event().wait()
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
 
     return 0
 

@@ -180,13 +180,12 @@ def _cur_ingest_worker(stop: threading.Event) -> None:
     while not stop.is_set():
         db = None
         try:
-            import boto3
-
+            from spendslicer.aws.session import make_session
             from spendslicer.cur.ingestor import CurIngestor
             from spendslicer.cur.schema import connect as cur_connect
             from spendslicer.web.deps import _CACHE_DIR, _CUR_DB_PATH
 
-            session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+            session = make_session(profile)
             db = cur_connect(_CUR_DB_PATH)
             local_dir = _CACHE_DIR / "parquet"
             CurIngestor(

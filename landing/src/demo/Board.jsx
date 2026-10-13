@@ -36,7 +36,7 @@ export function Delta({ value: v, note }) {
 
 export function Xcheck() {
   return (
-    <div className="xcheck">
+      <div className="xcheck xcheck-equation">
       <div className="xcheck-cell">
         <span className="xcheck-k">Attributed to resources</span>
         <span className="xcheck-v">{usd(ATTRIBUTED, 2)}</span>

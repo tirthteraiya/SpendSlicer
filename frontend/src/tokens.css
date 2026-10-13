@@ -468,12 +468,13 @@ select.ctl {
    Each cell owns one truth and the row visibly reconciles: the operators
    between the cells are the proof, not decoration. */
 .xcheck {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
   border-top: 1px solid var(--rule);
   background: var(--panel-2);
-  flex-wrap: wrap;
 }
+.xcheck-equation { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); }
 .xcheck-cell {
   padding: 15px 22px;
   display: flex;
@@ -491,7 +492,8 @@ select.ctl {
   align-items: center;
   gap: 6px;
   min-height: var(--xcheck-label-h);
-  white-space: nowrap;
+  white-space: normal;
+  flex-wrap: wrap;
 }
 .xcheck-v {
   font-family: var(--face-board);
@@ -505,7 +507,7 @@ select.ctl {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  align-self: flex-start;
+  align-self: end;
   padding: 15px 6px;
   font-family: var(--face-board);
   font-size: 20px;
@@ -523,12 +525,12 @@ select.ctl {
 }
 .xcheck-note {
   position: relative;
-  flex-basis: 100%;
+  grid-column: 1 / -1;
   padding: 14px 22px 15px;
   font-size: 12.5px;
   color: var(--ink-4);
-  /* Caps the reading measure without cropping the rule above it. */
-  max-width: 88ch;
+  /* The reconciliation note owns a full row, below every accuracy badge. */
+  width: 100%;
   line-height: 1.5;
   margin: 0;
 }
@@ -538,7 +540,7 @@ select.ctl {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
+  width: 100%;
   height: 1px;
   background: var(--rule);
 }
@@ -1184,6 +1186,7 @@ tr.clickable:hover .caret { color: var(--ink); }
     line-height: 1;
     color: var(--ink-4);
   }
+  .xcheck-op::before { display: none; }
   .xcheck-note { padding: 13px 18px 14px; max-width: none; }
   .board-main { padding: 22px 18px 18px; flex-direction: column; align-items: stretch; gap: 22px; }
 

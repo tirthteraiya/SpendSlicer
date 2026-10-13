@@ -70,7 +70,7 @@ export function SurfaceResources() {
         </p>
       </div>
 
-      <div className="xcheck">
+      <div className="xcheck xcheck-equation">
         <div className="xcheck-cell">
           <span className="xcheck-k">Attributed <Mark kind="estimated" /></span>
           <span className="xcheck-v">{usd(scoped.attributed, 2)}</span>

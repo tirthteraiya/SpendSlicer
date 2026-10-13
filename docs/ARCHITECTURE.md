@@ -109,6 +109,12 @@ returned as `X-CE-Calls-Spent` / `X-CE-Estimated-Cost-USD`. Background
 producers get their own counter so their spend is not misattributed to whichever
 request happened to trigger the refresh.
 
+The browser revalidates financial requests with the backend; it does not serve
+stored figures before credentials are checked. Route caches are bound to the
+current credential fingerprint and local configuration, while the canonical CE
+matrix is shared by verified account ID. Profile names appear immediately;
+account aliases are resolved in the background and never authorize cache reuse.
+
 ## Web layer
 
 - `web/app.py` — app construction, auth/CSRF dependency, lifespan hooks

@@ -24,16 +24,20 @@ Write-Host "==> Building $AppName $Version (x64)"
 Write-Host "==> Frontend"
 Push-Location frontend
 npm ci
+if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
 npm run build
+if ($LASTEXITCODE -ne 0) { throw "Frontend build failed" }
 Pop-Location
 
 Write-Host "==> Icons"
 python packaging\make_icons.py
+if ($LASTEXITCODE -ne 0) { throw "Icon conversion failed" }
 
 Write-Host "==> PyInstaller"
 Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
 $env:SPENDSLICER_VERSION = $Version
 pyinstaller packaging\spendslicer.spec --noconfirm
+if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 $ExePath = "dist\$AppName\$AppName.exe"
 if (-not (Test-Path $ExePath)) { throw "ERROR: $ExePath was not produced" }

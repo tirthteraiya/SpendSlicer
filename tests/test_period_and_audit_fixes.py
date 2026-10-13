@@ -304,3 +304,11 @@ def _tw(days):
     from spendslicer.core.types import TimeWindow
     now = datetime.now(tz=timezone.utc)
     return TimeWindow(start=now - timedelta(days=days), end=now)
+
+
+@pytest.mark.parametrize("period", ["0000-01", "0001-01", "9999-12"])
+def test_calendar_extremes_are_clamped_before_window_math(period):
+    from spendslicer.web.deps import is_valid_period, period_to_window, safe_period
+    assert not is_valid_period(period)
+    assert safe_period(period) == "mtd"
+    assert period_to_window(period).iso() == period_to_window("mtd").iso()

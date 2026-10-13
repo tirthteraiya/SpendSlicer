@@ -77,7 +77,7 @@ def _cached_report(profile: str, period: str) -> tuple[dict, object]:
     fetched fresh (cheap, no API spend) since it isn't serialisable.
     """
     period = period if is_valid_period(period) else "mtd"
-    key = f"export_report:{profile}:{period}"
+    key = f"export_report:{cache_ns(profile)}:{period}"
     cached = cache_get(key)
     if cached is not None:
         return cached, get_session(profile)
@@ -259,7 +259,7 @@ def api_export_download(
 def api_budgets_data(profile: str = Query("default")):
     from spendslicer.web.deps import cache_get, cache_set
 
-    ckey = f"budgets:{profile}"
+    ckey = f"budgets:{cache_ns(profile)}"
     cached = cache_get(ckey)
     if cached:
         return JSONResponse(cached)

@@ -23,6 +23,8 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
 
+from spendslicer import __version__
+
 REPO = Path(SPECPATH).resolve().parent
 ICONS = REPO / "packaging" / "icons"
 
@@ -155,8 +157,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "SpendSlicer",
             "CFBundleDisplayName": "SpendSlicer",
-            "CFBundleShortVersionString": os.environ.get("SPENDSLICER_VERSION", "0.3.0"),
-            "CFBundleVersion": os.environ.get("SPENDSLICER_VERSION", "0.3.0"),
+            "CFBundleShortVersionString": os.environ.get("SPENDSLICER_VERSION", __version__),
+            "CFBundleVersion": os.environ.get("SPENDSLICER_VERSION", __version__),
             "NSHighResolutionCapable": True,
             # No server, no inbound listener beyond loopback, no camera/mic.
             "LSMinimumSystemVersion": "11.0",

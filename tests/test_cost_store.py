@@ -151,3 +151,29 @@ def test_monthly_trend_rolls_days_into_months():
     labels, values = m.monthly_trend()
     assert labels == ["2026-05", "2026-06"]
     assert values == pytest.approx([m.total(), 0.0])
+
+
+def test_concurrent_route_stores_share_one_paid_fetch():
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    cache = {}
+    barrier = threading.Barrier(2)
+    calls = []
+    def fetch(window, spec):
+        calls.append(1)
+        return _fake_ce_response()
+    ce = MagicMock()
+    ce.daily_service_matrix.side_effect = fetch
+    seen = threading.local()
+    def read(key):
+        cached = cache.get(key)
+        if not getattr(seen, "first_read", False):
+            seen.first_read = True
+            barrier.wait(timeout=2)
+        return cached
+    stores = [CostStore(ce, read, lambda k, v, **kw: cache.__setitem__(k, v)) for _ in range(2)]
+    window = W(dt.date(2026, 5, 18), dt.date(2026, 5, 20))
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="route") as pool:
+        results = list(pool.map(lambda store: store.get_matrix("prod", "acct-concurrent", window, "gross"), stores))
+    assert len(calls) == 1
+    assert results[0].total() == results[1].total()

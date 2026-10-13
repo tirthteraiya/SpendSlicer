@@ -70,12 +70,17 @@ def get_current_counter() -> CECallCounter:
 
 class CECountingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        from spendslicer.web.deps import _request_sessions
+
         counter = CECallCounter()
         token = _current.set(counter)
+        # Pin one credential resolution across the namespace and its producer.
+        session_token = _request_sessions.set({})
         try:
             response = await call_next(request)
         finally:
             _current.reset(token)
+            _request_sessions.reset(session_token)
         response.headers["X-CE-Calls-Spent"] = str(counter.calls)
         response.headers["X-CE-Estimated-Cost-USD"] = f"{counter.estimated_usd():.5f}"
         return response

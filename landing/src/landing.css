@@ -439,15 +439,16 @@ code.mono {
   .hero-demo .dep-row:nth-child(3) { animation-delay: 120ms; }
   .hero-demo .dep-row:nth-child(4) { animation-delay: 160ms; }
   .hero-demo .dep-row:nth-child(5) { animation-delay: 200ms; }
-  .rise { opacity: 0; transform: translateY(16px); }
-  .rise.seen { opacity: 1; transform: none; transition: opacity 520ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)), transform 520ms cubic-bezier(0.16, 1, 0.3, 1); }
-  .lift > * { opacity: 0; animation: lift 620ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  /* Content stays visible if observation or animation is unavailable. */
+  .rise.seen { animation: section-enter 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .lift > * { animation: lift 620ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .lift > *:nth-child(1) { animation-delay: 60ms; }
   .lift > *:nth-child(2) { animation-delay: 130ms; }
   .lift > *:nth-child(3) { animation-delay: 200ms; }
-  .hero-demo { opacity: 0; animation: lift 780ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both; }
+  .hero-demo { animation: lift 780ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both; }
 }
-@keyframes lift { from { transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes section-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes lift { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes surface-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes resource-enter { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 

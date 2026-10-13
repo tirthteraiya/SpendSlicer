@@ -41,7 +41,8 @@ Horizontal lockup: 160px preferred minimum. Never stretch, rotate, add effects,
 change the diagonal gap, or add a vertical dollar stem. Do not prepend the symbol
 to the full written name. Ordinary prose and accessible names remain SpendSlicer.
 
-Landing motion uses short entrances, staggered service rows and small hover lifts.
+Landing motion uses short entrances, staggered service rows, tab-content fades,
+and small hover lifts. Content remains visible if animation or observation fails.
 All decorative motion is disabled when reduced motion is requested.
 
 ## Reproduction

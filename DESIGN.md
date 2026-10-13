@@ -486,7 +486,7 @@ movement. No line or overlay crosses a printed figure.
 - **Do** state magnitude as proportional row mass, and normalize it against whatever the row's printed figure refers to: the departure rows print a share of the period, so their mass is normalized to the period total and field and figure agree; a table that prints no share figure (Top resources) normalizes to the largest row in that table, which answers "largest of these" rather than "share of everything". Never normalize to the leader while printing a share figure — the field would overstate the leader and be contradicted by its own badge.
 - **Do** define any accuracy mark you use through the shared marks module, and render its definition in the legend.
 - **Do** separate sections with the void steps (34px / 22px) and honor the page's density ruling: air on Dashboard, density on Services and Resources.
-- **Do** honor `prefers-reduced-motion` on every animation, and keep the split-flap as the only authored motion.
+- **Do** honor `prefers-reduced-motion` on every animation. In the dashboard, keep the split-flap as the only authored motion; the landing page may use the subtle entrances and feedback defined above.
 - **Do** hold secondary text at `{colors.ink-4}` or darker.
 
 ### Don't:
@@ -496,7 +496,7 @@ movement. No line or overlay crosses a printed figure.
 - **Don't** set money, percentages, timestamps, or labels in monospace.
 - **Don't** borrow the accuracy-mark shape vocabulary for anything that is not an accuracy mark; a notice row that reused it was a review regression.
 - **Don't** use `{colors.ink-5}` or `{colors.ink-6}` for text.
-- **Don't** animate charts, or add motion beyond the split-flap and the cue pulse.
+- **Don't** animate charts. In the dashboard, do not add motion beyond the split-flap and the cue pulse.
 - **Don't** add a dark theme; the application declares `color-scheme: light` and its grounds are enamel signage, not paper.
 - **Don't** ship a raw hex value in a component; every color comes from the token set. Two carve-outs, both deliberate: `charts.jsx` mirrors `{colors.line-1}`–`{colors.line-8}` as the exported `PALETTE` because Recharts needs literal values, and the mirror must stay byte-identical to the tokens; and `ErrorBoundary.jsx` writes each token as `var(--x, #literal)` because it is the one component that must still render if the stylesheet itself failed to load.
 - **Don't** exceed 60px in the type scale — the board total is the ceiling, and nothing else in the system may reach it.

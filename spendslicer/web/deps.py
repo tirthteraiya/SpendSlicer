@@ -7,10 +7,12 @@ and uvicorn --reload cycles without losing warm entries.
 from __future__ import annotations
 
 import contextvars
+import hashlib
 import logging
 import os
 import re
 import threading
+import weakref
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -19,7 +21,7 @@ import boto3
 from fastapi import HTTPException, Query
 
 from spendslicer.aws.cost_explorer import CostExplorerClient
-from spendslicer.aws.session import list_profiles, make_session
+from spendslicer.aws.session import list_profiles, make_session, profile_config_fingerprint
 from spendslicer.web.sqlite_cache import SqliteCache
 
 log = logging.getLogger(__name__)
@@ -82,7 +84,7 @@ _refresh_lock = threading.Lock()
 # — /top/data schedules a background scan and returns a warming placeholder,
 # then /data finds the cache still empty and runs the same scan inline — so a
 # single cold page view paid for two full 17-region enumerations.
-_cold_locks: dict[str, threading.Lock] = {}
+_cold_locks: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
 _cold_locks_guard = threading.Lock()
 
 
@@ -192,14 +194,20 @@ def schedule_refresh(key: str, producer, heavy: bool = False) -> None:
 # Session + CE client factories
 # ---------------------------------------------------------------------------
 
+_request_sessions: contextvars.ContextVar = contextvars.ContextVar("aws_sessions", default=None)
+
+
 def get_session(profile: str = Query("default")) -> boto3.Session:
+    sessions = _request_sessions.get()
+    if sessions is not None and profile in sessions:
+        return sessions[profile]
     # The profile name selects which local AWS credentials (and,
     # via credential_process, which command) are used. Never pass an arbitrary
     # client-supplied value to boto3 — validate it against the known profiles
     # first. "default" is always permitted.
     if profile and profile != "default" and profile not in set(list_profiles()):
         raise HTTPException(status_code=400, detail="Unknown AWS profile.")
-    p = profile if profile and profile != "default" else None
+    p = profile or None
     try:
         session = make_session(profile=p)
     except Exception as exc:
@@ -212,9 +220,13 @@ def get_session(profile: str = Query("default")) -> boto3.Session:
             "get_session: make_session failed for profile=%r: %s",
             p, type(exc).__name__, exc_info=True,
         )
+        from spendslicer.web.context import friendly_error
+        detail = friendly_error(exc) if type(exc).__name__ in {
+            "ConfigParseError", "ProfileNotFound", "CredentialRetrievalError", "FileNotFoundError",
+        } else f"Could not initialize AWS session for profile {profile!r}."
         raise HTTPException(
             status_code=502,
-            detail=f"Could not initialize AWS session for profile {profile!r}.",
+            detail=detail,
         ) from exc
 
     # Resolve credentials once, here, and fail fast if there are none.
@@ -226,7 +238,14 @@ def get_session(profile: str = Query("default")) -> boto3.Session:
     # HTTP 200 carrying zeros — the user saw an empty dashboard rather than
     # "no credentials". One check at the single point every route builds a
     # session through turns that into one actionable message.
-    if session.get_credentials() is None:
+    try:
+        credentials = session.get_credentials()
+        if credentials is not None:
+            credentials.get_frozen_credentials()
+    except Exception as exc:
+        from spendslicer.web.context import friendly_error
+        raise HTTPException(status_code=400, detail=friendly_error(exc)) from exc
+    if credentials is None:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -235,31 +254,24 @@ def get_session(profile: str = Query("default")) -> boto3.Session:
                 "then reload."
             ),
         )
+    if sessions is not None:
+        sessions[profile] = session
     return session
 
 
-def _account_tag(profile: str) -> str:
-    """Resolved account id for ``profile`` from the (cached) profile choices.
-
-    Route-level cache keys are namespaced by account, not just profile name:
-    if a profile is later repointed to a different AWS account (config edit,
-    SSO role change), its stale cached numbers must not be served as the new
-    account's. Returns ``"na"`` when the account can't be resolved cheaply."""
-    try:
-        from spendslicer.web.context import get_profile_choices
-        for c in get_profile_choices():
-            if c.get("profile") == profile:
-                return c.get("account_id") or "na"
-    except Exception:
-        pass
-    return "na"
-
-
 def cache_ns(profile: str) -> str:
-    """Route cache namespace: the account when known, so two profiles on one
-    account share entries (and CE calls); the profile name only as a fallback."""
-    acct = _account_tag(profile)
-    return acct if acct != "na" else f"na:{profile}"
+    """Validate current credentials before serving any route cache hit.
+
+    A helper can switch accounts without editing config files. Picker labels
+    cannot establish a financial namespace. The canonical CE matrix still
+    shares paid fetches by verified account ID.
+    """
+    credentials = get_session(profile).get_credentials().get_frozen_credentials()
+    digest = hashlib.sha256(profile_config_fingerprint().encode())
+    for value in (credentials.access_key, credentials.secret_key, credentials.token):
+        digest.update((value or "").encode())
+        digest.update(b"\0")
+    return f"profile:{profile}:credentials:{digest.hexdigest()}"
 
 
 def get_ce_client(session: boto3.Session) -> CostExplorerClient:
@@ -276,7 +288,7 @@ def get_ce_client(session: boto3.Session) -> CostExplorerClient:
 
 def get_profiles() -> list[str]:
     profiles = list_profiles()
-    return profiles if profiles else ["default"]
+    return sorted(set(profiles) | {"default"})
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +335,9 @@ def is_valid_period(period: str) -> bool:
     ``period`` everywhere it is reflected (templates, cache keys, CE calls),
     closing the reflected-XSS / cache-poisoning vector.
     """
+    # These calendar edges cannot represent the end or the previous period.
+    if period in {"0001-01", "9999-12"} or (period or "").startswith("0000-"):
+        return False
     return period in _RANGE_PERIODS or bool(MONTH_PERIOD_RE.match(period or ""))
 
 
@@ -356,6 +371,7 @@ def period_to_window(period: str):
         trailing_months,
     )
 
+    period = safe_period(period)
     m = MONTH_PERIOD_RE.match(period or "")
     if m:
         return month_window(int(m.group(1)), int(m.group(2)))

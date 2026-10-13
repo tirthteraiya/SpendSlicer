@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from spendslicer.audit.runner import run_audit
@@ -13,7 +13,9 @@ from spendslicer.resources.runner import ALL_REGIONS
 from spendslicer.web.context import friendly_error
 from spendslicer.web.deps import (
     cache_get_swr,
+    cache_ns,
     cache_set,
+    get_session,
     safe_region,
     schedule_refresh,
 )
@@ -33,7 +35,9 @@ def build_audit_ctx(profile: str, region: str, include_snapshots: int) -> dict:
         "region_label": "All opted-in regions" if region == ALL_REGIONS else region,
     }
     try:
-        bundle = load_profile_bundle(profile)
+        bundle = load_profile_bundle(profile, session=get_session(profile))
+        if not bundle.account_id:
+            raise HTTPException(status_code=400, detail="Could not verify the AWS account. Check profile credentials and your AWS connection, then retry.")
         regions = bundle.regions if region == ALL_REGIONS else [region]
         idle_checks = None
         if not include_snapshots:
@@ -68,9 +72,9 @@ def build_audit_ctx(profile: str, region: str, include_snapshots: int) -> dict:
 def api_audit_summary_data(
     profile: str = Query("default"),
     region: str = Query(ALL_REGIONS),
-    include_snapshots: int = Query(0),
+    include_snapshots: int = Query(0, ge=0, le=1),
 ):
-    ckey = f"audit:{profile}:{safe_region(region)}:{include_snapshots}"
+    ckey = f"audit:{cache_ns(profile)}:{safe_region(region)}:{include_snapshots}"
     cached, should_refresh = cache_get_swr(ckey)
     if cached is None:
         cached = build_audit_ctx(profile, region, include_snapshots)

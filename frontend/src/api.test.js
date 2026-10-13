@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// In-memory localStorage for the swrCache dependency (vitest runs in node env).
+// Auth storage in the node test environment.
 const store = new Map();
 globalThis.localStorage = {
   getItem: (k) => (store.has(k) ? store.get(k) : null),
@@ -43,20 +43,40 @@ describe("getJson backend-error handling", () => {
       .mockResolvedValueOnce({ ok: false, status: 403 });
     const { api } = await import("./api");
     await api.summary("q", "mtd");
-    // Past the fresh TTL but inside stale-while-revalidate: a network failure
-    // here would fall back to the cached copy; a 401 must not.
-    const later = Date.now() + 31 * 60 * 1000;
-    vi.spyOn(Date, "now").mockReturnValue(later);
+    // Credentials must be checked even just after a successful response.
     await expect(api.summary("q", "mtd")).rejects.toThrow(/link printed in the terminal/);
   });
 
-  it("caches clean payloads as before", async () => {
+  it("revalidates even fresh data against current server credentials", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ total_mtd: 7 }));
     const { api } = await import("./api");
     await api.summary("p", "mtd");
     const again = await api.summary("p", "mtd");
-    expect(again.meta.fromCache).toBe("fresh");
-    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(again.data.total_mtd).toBe(7);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not cache profile detection, and invalidates figures after config changes", async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ profiles: ["prod"], config_revision: "one" }))
+      .mockResolvedValueOnce(jsonResponse({ total_mtd: 7 }))
+      .mockResolvedValueOnce(jsonResponse({ profiles: ["prod", "new"], config_revision: "two" }))
+      .mockResolvedValueOnce(jsonResponse({ total_mtd: 99 }));
+    const { api } = await import("./api");
+    await api.context("prod", "mtd");
+    await api.summary("prod", "mtd");
+    const changed = await api.context("prod", "mtd");
+    expect(changed.data.profiles).toContain("new");
+    expect((await api.summary("prod", "mtd")).data.total_mtd).toBe(99);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("surfaces credential errors instead of silently serving an old account's cache", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(jsonResponse({ total_mtd: 7 }))
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ detail: "AWS SSO session expired. Run aws sso login." }) });
+    const { api } = await import("./api");
+    await api.summary("expired", "mtd");
+    await expect(api.summary("expired", "mtd")).rejects.toThrow(/aws sso login/);
   });
 
   it("reconnects a bare dashboard and loads the account choices", async () => {

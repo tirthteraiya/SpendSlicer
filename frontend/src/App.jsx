@@ -10,6 +10,7 @@ import { Mark, Legend } from "./components/Marks";
 import { Flap } from "./components/Flap";
 import { announce, KIND, cuePeriodChanged, cueProfileChanged } from "./lib/cues";
 import { usd, pct, value } from "./lib/format";
+import { readPreference, writePreference } from "./lib/preferences";
 import {
   Mark as BrandMark, IconBoard, IconServices, IconResources, IconAudit, IconExport,
   IconChevron, IconChevronDown, IconArrowUp, IconArrowDown, IconMinus,
@@ -242,10 +243,11 @@ function BoardBar({ page, period, setPeriod, profile, setProfile, context, onMen
           className="ctl"
           aria-label="Billing period"
           value={period}
+          disabled={!context}
           onChange={(e) => { cuePeriodChanged(periodLabel(e.target.value)); setPeriod(e.target.value); }}
         >
           {(() => {
-            const periods = context?.periods || [];
+            const periods = context?.periods || [{ value: period, label: periodLabel(period) }];
             // When entries carry a `group` (Ranges / Months), render grouped
             // <optgroup>s so both relative ranges and specific calendar months
             // are offered together; otherwise fall back to a flat list.
@@ -271,9 +273,10 @@ function BoardBar({ page, period, setPeriod, profile, setProfile, context, onMen
           className="ctl"
           aria-label="AWS profile"
           value={profile}
+          disabled={!context}
           onChange={(e) => { cueProfileChanged(e.target.value); setProfile(e.target.value); }}
         >
-          {context?.profile_choices?.map((p) => <option key={p.profile} value={p.profile}>{p.label}</option>)}
+          {(context?.profile_choices || [{ profile, label: profile || "Reading profiles…" }]).map((p) => <option key={p.profile} value={p.profile}>{p.label}</option>)}
         </select>
       </div>
     </div>
@@ -301,9 +304,8 @@ function DashboardPage({ profile, period }) {
 
   const pageHooks = [summary, services, trend, topResources];
   usePageCues(pageHooks, `${profile} · ${periodLabel(period)}`);
-  // A re-read (period or profile switch) keeps the board's last figures on
-  // screen, dimmed, so the split-flap can roll them to the new values instead
-  // of the board blanking to skeletons and repainting.
+  // Retries of this selection can retain dimmed figures. Profile and period
+  // switches clear them immediately so account labels never misstate data.
   const reading = [summary, services].some((h) => h.loading && h.data);
 
   const fatal = summary.error || summary.backendError;
@@ -345,7 +347,8 @@ function DashboardPage({ profile, period }) {
   const topResourcesRows = (r.rows || []).slice(0, 10);
   const topResourceMax = Math.max(...topResourcesRows.map((x) => value(x.cost, 1)), 1);
 
-  const reconciles = !!topResources.data && !r.warming && value(r.ce_total) > 0;
+  const reconciles = !!topResources.data && !r.warming && !topResources.backendError
+    && r.ce_total != null && Number.isFinite(Number(r.ce_total));
 
   return (
     <div className="page">
@@ -389,7 +392,7 @@ function DashboardPage({ profile, period }) {
         </div>
 
         {/* THE CROSS-CHECK — each cell owns one truth, and the row reconciles. */}
-        <div className="xcheck">
+        <div className="xcheck xcheck-equation">
           <div className="xcheck-cell">
             <span className="xcheck-k">Attributed to resources {attrSource ? <Mark kind={resourceMark(attrSource)} /> : null}</span>
             <span className="xcheck-v"><Flap text={reconciles ? usd(r.total, 2) : "—"} /></span>
@@ -827,7 +830,7 @@ function ResourcesPage({ profile, period }) {
 
       {/* The reconciliation is the page's thesis, so it leads. */}
       <section className="panel">
-        <div className="xcheck" style={{ borderTop: 0 }}>
+        <div className="xcheck xcheck-equation" style={{ borderTop: 0 }}>
           <div className="xcheck-cell">
             <span className="xcheck-k">Attributed {d.attribution_source ? <Mark kind={kind} /> : null}</span>
             <span className="xcheck-v">{usd(d.total, 2)}</span>
@@ -1302,15 +1305,13 @@ const readUrlState = () => {
 export default function App() {
   const urlInit = readUrlState();
   const [page, setPage] = useState(urlInit.page && TITLES[urlInit.page] ? urlInit.page : "dashboard");
-  // Falls back to the literal "default" profile, which is what the AWS CLI
-  // calls an unnamed profile — never an empty string, which the backend
-  // cannot resolve and which surfaces as "credentials not found".
-  const [profile, setProfile] = useState(() => urlInit.profile || localStorage.getItem("acu:profile") || "default");
-  const [period, setPeriod] = useState(() => urlInit.period || localStorage.getItem("acu:period") || "mtd");
+  // With no saved selection, let the backend honor the SDK environment profile.
+  const [profile, setProfile] = useState(() => urlInit.profile || readPreference("acu:profile"));
+  const [period, setPeriod] = useState(() => urlInit.period || readPreference("acu:period") || "mtd");
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  useEffect(() => { localStorage.setItem("acu:profile", profile); }, [profile]);
-  useEffect(() => { localStorage.setItem("acu:period", period); }, [period]);
+  useEffect(() => { if (profile) writePreference("acu:profile", profile); }, [profile]);
+  useEffect(() => { writePreference("acu:period", period); }, [period]);
 
   // Keep the URL shareable: push state changes into query params, and follow
   // browser back/forward. Uses replaceState for profile/period tweaks and
@@ -1318,7 +1319,8 @@ export default function App() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const prevPage = q.get("page");
-    q.set("page", page); q.set("period", period); q.set("profile", profile);
+    q.set("page", page); q.set("period", period);
+    if (profile) q.set("profile", profile); else q.delete("profile");
     const url = `${window.location.pathname}?${q.toString()}`;
     if (prevPage !== null && prevPage !== page) window.history.pushState({}, "", url);
     else window.history.replaceState({}, "", url);
@@ -1343,18 +1345,20 @@ export default function App() {
   useEffect(() => {
     if (!contextState.data) return;
     const validProfiles = contextState.data.profiles || [];
-    if (validProfiles.length > 0 && !validProfiles.includes(profile)) setProfile(validProfiles[0]);
+    if (validProfiles.length > 0 && !validProfiles.includes(profile)) setProfile(contextState.data.active_profile || validProfiles[0]);
     const validPeriods = (contextState.data.periods || []).map((p) => p.value);
     if (validPeriods.length > 0 && !validPeriods.includes(period)) setPeriod(validPeriods[0]);
   }, [contextState.data, profile, period]);
 
   const pageNode = useMemo(() => {
+    if (contextState.error || contextState.backendError) return <div className="page"><Banner tone="error" onRetry={contextState.reload}>{contextState.error || contextState.backendError}</Banner></div>;
+    if (!contextState.data?.profiles?.includes(profile)) return <div className="page"><div className="loading" role="status">Reading local AWS profiles…</div></div>;
     if (page === "services") return <ServicesPage profile={profile} period={period} />;
     if (page === "resources") return <ResourcesPage profile={profile} period={period} />;
     if (page === "audit") return <AuditPage profile={profile} />;
     if (page === "export") return <ExportPage profile={profile} period={period} />;
     return <DashboardPage profile={profile} period={period} />;
-  }, [page, profile, period]);
+  }, [page, profile, period, contextState.data, contextState.error, contextState.backendError, contextState.reload]);
 
   return (
     <div className={`app ${collapsed ? "collapsed" : ""}`}>

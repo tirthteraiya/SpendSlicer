@@ -1,5 +1,4 @@
 import { authHeaders, reconnectLocal } from "./lib/auth";
-import { readSwr, writeSwr } from "./lib/swrCache";
 
 const toParams = (params) => {
   const q = new URLSearchParams();
@@ -8,8 +7,6 @@ const toParams = (params) => {
   });
   return q.toString();
 };
-
-const cacheKey = (path, params) => `${path}?${toParams(params)}`;
 
 // Every launch mints a new token, so a 401 almost always means this tab holds
 // the previous run's token (or none). Say how to recover instead of "401".
@@ -29,12 +26,8 @@ const fetchWithAuth = async (url, options = {}) => {
 };
 
 const getJson = async (path, params = {}, opts = {}) => {
-  const key = cacheKey(path, params);
-  const cached = readSwr(key);
-  if (cached?.fresh) {
-    return { data: cached.value, meta: { ceCalls: 0, ceCostUsd: 0, fromCache: "fresh", backendError: null } };
-  }
-
+  // The backend's persistent cache saves CE calls. Always reach it so a
+  // changed credential helper or expired session cannot reuse old-account data.
   const qs = toParams(params);
   try {
     const res = await fetchWithAuth(`${path}${qs ? `?${qs}` : ""}`, {
@@ -42,7 +35,11 @@ const getJson = async (path, params = {}, opts = {}) => {
       headers: authHeaders(),
     });
     if (res.status === 401) throw authError();
-    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    if (!res.ok) {
+      let message = `Request failed: ${res.status}`;
+      try { const body = await res.json(); message = body.detail || body.error || message; } catch { /* non-JSON error */ }
+      throw Object.assign(new Error(message), { status: res.status });
+    }
     const data = await res.json();
     // Sanitize header-derived numbers: a malformed header (proxy mangling,
     // "0,01") would yield NaN, which then poisons the session cost meter
@@ -59,14 +56,9 @@ const getJson = async (path, params = {}, opts = {}) => {
       fromCache: null,
       backendError,
     };
-    // Don't cache transient placeholders ({warming:true}) or error payloads —
-    // otherwise a single expired-credentials response poisons the view for
-    // the whole SWR TTL even after the user fixes the problem.
-    if (!data?.warming && !backendError) writeSwr(key, data);
     return { data, meta };
   } catch (err) {
-    if (err?.name === "AbortError" || err?.auth) throw err;
-    if (cached) return { data: cached.value, meta: { ceCalls: 0, ceCostUsd: 0, fromCache: "stale", backendError: null } };
+    if (err?.name === "AbortError" || err?.auth || (err?.status >= 400 && err.status < 500)) throw err;
     throw err;
   }
 };

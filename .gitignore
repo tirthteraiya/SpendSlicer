@@ -38,6 +38,15 @@ exports/
 
 # ─── OS / editor ────────────────────────────────────────────────────────
 .DS_Store
+.env
+.env.*
+!.env.example
+.aws/
+.codex/
+*.log
+/test-results/
+/playwright-report/
+/artifacts/
 Thumbs.db
 .idea/
 .vscode/

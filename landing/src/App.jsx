@@ -321,7 +321,7 @@ function InstallSection() {
             <h3>From source</h3>
             <p>The script creates a virtualenv, installs the web and cur extras, and starts the server.</p>
             <Cmd copy={`git clone ${REPO}.git`}>git clone {REPO}.git</Cmd>
-            <Cmd copy="cd spendslicer && ./run.sh">cd spendslicer && ./run.sh</Cmd>
+            <Cmd copy="cd SpendSlicer && ./run.sh">cd SpendSlicer && ./run.sh</Cmd>
             <p className="route-note">On Windows, <code className="mono">run.bat</code>.</p>
           </div>
         </div>

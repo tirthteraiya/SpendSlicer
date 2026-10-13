@@ -21,7 +21,7 @@ def root_redirect():
 
 
 @router.get("/api/ui/context")
-def ui_context(profile: str = Query("default"), period: str = Query("mtd")):
+def ui_context(profile: str = Query(""), period: str = Query("mtd")):
     from spendslicer.web.deps import available_periods
 
     ctx = base_ctx(profile, period, "dashboard")

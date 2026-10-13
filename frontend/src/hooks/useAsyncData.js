@@ -2,6 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { recordCe } from "../lib/ceMeter";
 
+const empty = { loading: true, error: "", backendError: null, data: null, meta: null };
+const sameDeps = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+
 /**
  * loader receives an AbortSignal and should pass it to fetch().
  * State only updates from the latest in-flight request.
@@ -9,7 +12,7 @@ import { recordCe } from "../lib/ceMeter";
  * `backendError` carries HTTP-200 {error:"..."} payload messages.
  */
 export function useAsyncData(loader, deps) {
-  const [state, setState] = useState({ loading: true, error: "", backendError: null, data: null, meta: null });
+  const [state, setState] = useState({ ...empty, deps });
   const [tick, setTick] = useState(0);
   const inFlight = useRef(null);
   const reload = useCallback(() => setTick((t) => t + 1), []);
@@ -19,7 +22,7 @@ export function useAsyncData(loader, deps) {
     const ctrl = new AbortController();
     inFlight.current = ctrl;
 
-    setState((prev) => ({ ...prev, loading: true, error: "" }));
+    setState((prev) => ({ ...(sameDeps(prev.deps, deps) ? prev : empty), deps, loading: true, error: "" }));
 
     loader(ctrl.signal)
       .then((result) => {
@@ -32,6 +35,7 @@ export function useAsyncData(loader, deps) {
           backendError: meta?.backendError || null,
           data: data ?? null,
           meta: meta || null,
+          deps,
         });
       })
       .catch((err) => {
@@ -42,6 +46,7 @@ export function useAsyncData(loader, deps) {
           backendError: prev.backendError,
           data: prev.data,
           meta: prev.meta,
+          deps,
         }));
       });
 
@@ -49,5 +54,7 @@ export function useAsyncData(loader, deps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
 
-  return { ...state, reload };
+  // Never label a previous profile's figures with the newly selected name,
+  // including the render before the effect starts the next request.
+  return { ...(sameDeps(state.deps, deps) ? state : empty), reload };
 }

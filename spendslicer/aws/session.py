@@ -11,11 +11,14 @@ Exports:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TypeVar
 
 import boto3
@@ -73,29 +76,23 @@ class ProfileBundle:
 # ---------------------------------------------------------------------------
 
 def make_session(profile: str | None = None, region: str | None = None) -> boto3.Session:
-    """Build a boto3 session, preferring an explicit profile, else AWS_PROFILE env.
+    """Select an explicit profile, or let boto3 resolve its default chain.
 
-    "default" means the default credential chain, not a profile literally
-    named "default". boto3.Session(profile_name="default") raises
-    ProfileNotFound unless a [default] section exists, while boto3.Session()
-    happily falls back to environment variables, an EC2 instance role or an
-    ECS task role. Those are different behaviours and the UI passes the string
-    "default" for both cases.
-
-    get_session already made this distinction; load_profile_bundle did not, so
-    on a machine with no profiles at all the "default" fallback in
-    get_profile_choices produced "1 of 1 AWS profile(s) could not be loaded:
-    default (ProfileNotFound)" — which points at a profile problem when the
-    real answer is that no credentials were found anywhere. Doing it here
-    covers every caller.
+    Explicit "default" selects [default] when it exists. Without that section,
+    keep the environment/instance-role fallback for machines with no profiles.
     """
-    profile = profile or os.environ.get("AWS_PROFILE")
     kw: dict = {}
-    if profile and profile != "default":
+    # Explicit default must not inherit AWS_PROFILE or environment keys when
+    # a literal default profile exists. No profile delegates to boto3's chain.
+    if profile and (profile != "default" or "default" in list_profiles()):
         kw["profile_name"] = profile
     if region:
         kw["region_name"] = region
-    return boto3.Session(**kw)
+    session = boto3.Session(**kw)
+    if getattr(sys, "frozen", False):
+        from spendslicer.aws.process_credentials import configure
+        configure(session._session)
+    return session
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +116,7 @@ def list_profiles() -> list[str]:
     same as profiles whose credentials resolve — get_session checks that.
     """
     try:
-        return sorted(boto3.Session().available_profiles)
+        return sorted(botocore.session.Session().available_profiles)
     except Exception as exc:
         # A malformed config file makes botocore raise here. Returning empty
         # lets get_profiles() fall back to "default" rather than 500 the
@@ -143,16 +140,33 @@ def aws_config_locations() -> dict[str, str]:
     try:
         bs = botocore.session.Session()
         return {
-            "credentials_file": os.path.expanduser(
+            "credentials_file": os.path.expandvars(os.path.expanduser(
                 bs.get_config_variable("credentials_file") or ""
-            ),
-            "config_file": os.path.expanduser(
+            )),
+            "config_file": os.path.expandvars(os.path.expanduser(
                 bs.get_config_variable("config_file") or ""
-            ),
-            "profile_env": os.environ.get("AWS_PROFILE", ""),
+            )),
+            "profile_env": os.environ.get("AWS_DEFAULT_PROFILE") or os.environ.get("AWS_PROFILE", ""),
         }
     except Exception:
         return {}
+
+
+def profile_config_fingerprint() -> str:
+    """Invalidate discovery and fallback caches when local credential sources change."""
+    digest = hashlib.sha256()
+    for key, value in sorted(aws_config_locations().items()):
+        digest.update(f"{key}={value}\0".encode())
+        if key.endswith("_file"):
+            try:
+                digest.update(Path(value).read_bytes())
+            except OSError:
+                digest.update(b"unreadable")
+    for key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+                "AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE",
+                "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "AWS_CONTAINER_CREDENTIALS_FULL_URI"):
+        digest.update(f"{key}={os.environ.get(key, '')}\0".encode())
+    return digest.hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -210,13 +224,15 @@ def accessible_regions(session: boto3.Session) -> list[str]:
 def load_profile_bundle(
     profile: str | None = None,
     regions: list[str] | None = None,
+    *,
+    session: boto3.Session | None = None,
 ) -> ProfileBundle:
     """Build a fully-resolved ProfileBundle for one profile.
 
     If ``regions`` is None, the account's accessible regions are discovered
     via EC2 describe_regions (one API call).
     """
-    session = make_session(profile)
+    session = session if session is not None else make_session(profile)
     profile_name = profile or "default"
     account = account_id_for(session)
     alias = account_alias_for(session)

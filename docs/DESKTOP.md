@@ -70,7 +70,7 @@ to system locations:
 | --- | --- |
 | `~/.cache/spendslicer/cache.db` | SQLite cache of Cost Explorer responses |
 | `~/.cache/spendslicer/cur.duckdb` | CUR warehouse, if configured |
-| `~/.cache/spendslicer/webview/` | Webview localStorage (the dashboard's client-side cache) |
+| `~/.cache/spendslicer/webview/` | Webview localStorage (profile and period preferences) |
 
 To uninstall: delete the app and remove `~/.cache/spendslicer`. That's it.
 

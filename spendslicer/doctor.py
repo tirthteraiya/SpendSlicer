@@ -52,7 +52,7 @@ def run(check_identity: bool = True) -> int:
     home = os.path.expanduser("~")
     _line(INFO, "home directory", home)
     if loc.get("profile_env"):
-        _line(INFO, "AWS_PROFILE is set", loc["profile_env"]
+        _line(INFO, "AWS profile environment selection", loc["profile_env"]
               + "  <- overrides the default profile")
     for var in ("AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE",
                 "AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN"):
@@ -71,6 +71,8 @@ def run(check_identity: bool = True) -> int:
         try:
             sess = boto3.Session(profile_name=name)
             creds = sess.get_credentials()
+            if creds is not None:
+                creds.get_frozen_credentials()
         except Exception as exc:
             _line(CROSS, name, type(exc).__name__)
             continue
@@ -94,10 +96,14 @@ def run(check_identity: bool = True) -> int:
     print()
     print("Default credential chain (no profile)")
     try:
-        creds = boto3.Session().get_credentials()
+        session = boto3.Session()
+        creds = session.get_credentials()
         if creds is None:
             _line(CROSS, "unusable", "no credentials from env, profile or instance role")
         else:
+            creds.get_frozen_credentials()
+            if check_identity:
+                session.client("sts").get_caller_identity()
             working += 1
             _line(CHECK, "usable", f"via {creds.method}")
     except Exception as exc:

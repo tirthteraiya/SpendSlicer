@@ -44,6 +44,17 @@ The desktop builds also generate a token and pass the protected link directly
 to the app window. When starting with `uvicorn spendslicer.web.app:app`, set
 `SPENDSLICER_AUTH_TOKEN` yourself and open `/app?token=<your-token>`.
 
+## AWS profiles
+
+Profiles come from botocore's discovery, including SSO and `credential_process`.
+`AWS_CONFIG_FILE` and `AWS_SHARED_CREDENTIALS_FILE` may point to custom files.
+The initial selection follows `AWS_DEFAULT_PROFILE`, then `AWS_PROFILE`, unless
+you have a saved or URL selection. Selecting `default` uses the literal
+`[default]` profile when present; on machines without it, the default credential
+chain supports environment credentials and instance/task roles. Named profiles
+always use their own credentials. An expired SSO session or broken helper shows
+an actionable error while leaving the profile picker available.
+
 ## Caching and Cost Explorer spend
 
 Cost Explorer bills **$0.01 per request**, so caching is a cost control, not

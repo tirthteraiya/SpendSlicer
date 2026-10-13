@@ -10,11 +10,17 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import threading
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 log = logging.getLogger("spendslicer.cost_store")
+
+# Routes create separate stores. Keep one lock per live cache key across them;
+# weak references retire locks only after every waiting caller releases them.
+_matrix_locks: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+_matrix_locks_guard = threading.Lock()
 
 
 class _Window(Protocol):
@@ -106,11 +112,6 @@ class CostStore:
         self._ce = ce_client
         self._cache_get = cache_get
         self._cache_set = cache_set
-        # Per-key single-flight: serialize concurrent COLD
-        # fetches for the same key so N simultaneous missers trigger ONE
-        # paginated CE call instead of N (each is billed per page).
-        self._inflight_lock = threading.Lock()
-        self._inflight: dict[str, threading.Lock] = {}
 
     @staticmethod
     def _from_cached(cached: dict) -> DailyServiceMatrix:
@@ -166,8 +167,8 @@ class CostStore:
         # Cold path: single-flight per key. Concurrent missers queue on the same
         # per-key lock; the first fetches and populates the cache, the rest then
         # re-check and return the cached result instead of re-paying the CE call.
-        with self._inflight_lock:
-            key_lock = self._inflight.setdefault(key, threading.Lock())
+        with _matrix_locks_guard:
+            key_lock = _matrix_locks.setdefault(key, threading.Lock())
 
         with key_lock:
             if not force:
@@ -175,34 +176,28 @@ class CostStore:
                 if cached is not None:
                     return self._from_cached(cached)
 
-            try:
-                raw = self._ce.daily_service_matrix(window, spec=spec)
-                m = DailyServiceMatrix.from_ce(raw)
+            raw = self._ce.daily_service_matrix(window, spec=spec)
+            m = DailyServiceMatrix.from_ce(raw)
 
-                # Closed windows cache effectively forever. Open ones use the
-                # app-wide TTL: get() never serves stale, so a 15-minute TTL here
-                # just re-billed the matrix twice per route-cache lifetime, and CE
-                # itself only refreshes a few times a day.
-                if self._is_closed_window(window):
-                    ttl, swr = 30 * 24 * 3600.0, 0.0      # 30 days, no SWR
-                else:
-                    ttl, swr = None, None                  # deps defaults (30 min)
+            # Closed windows cache effectively forever. Open ones use the
+            # app-wide TTL: get() never serves stale, so a 15-minute TTL here
+            # just re-billed the matrix twice per route-cache lifetime, and CE
+            # itself only refreshes a few times a day.
+            if self._is_closed_window(window):
+                ttl, swr = 30 * 24 * 3600.0, 0.0      # 30 days, no SWR
+            else:
+                ttl, swr = None, None                  # deps defaults (30 min)
 
-                self._cache_set(
-                    key,
-                    {
-                        "cells": {f"{d}\x1f{s}": v for (d, s), v in m.cells.items()},
-                        "days": list(m.days),
-                    },
-                    ttl_seconds=ttl,
-                    swr_seconds=swr,
-                )
-                return m
-            finally:
-                # Drop the per-key lock so the dict can't grow unbounded. A late
-                # arrival just creates a fresh lock and hits the now-warm cache.
-                with self._inflight_lock:
-                    self._inflight.pop(key, None)
+            self._cache_set(
+                key,
+                {
+                    "cells": {f"{d}\x1f{s}": v for (d, s), v in m.cells.items()},
+                    "days": list(m.days),
+                },
+                ttl_seconds=ttl,
+                swr_seconds=swr,
+            )
+            return m
 
     def attribute_resources_via_describe(
         self, account_id, window, *, session, spec, errors=None, region="all",

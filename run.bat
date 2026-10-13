@@ -24,12 +24,18 @@ if %errorlevel% neq 0 (
 if not exist "venv\Scripts\activate.bat" (
     echo Creating virtual environment...
     python -m venv venv
+    if errorlevel 1 exit /b 1
 )
-call venv\Scripts\activate.bat
+if not exist "venv\Scripts\python.exe" (
+    echo ERROR: venv is not a Windows virtual environment. Remove it and rerun.
+    exit /b 1
+)
 
 echo Installing dependencies...
-pip install --quiet --upgrade pip
-pip install --quiet -e ".[web,cur]"
+"venv\Scripts\python.exe" -m pip install --quiet --upgrade pip
+if errorlevel 1 exit /b 1
+"venv\Scripts\python.exe" -m pip install --quiet -e ".[web,cur]"
+if errorlevel 1 exit /b 1
 
 echo.
 echo Starting SpendSlicer. Your local browser connects automatically.
@@ -39,4 +45,4 @@ echo.
 REM The console script, not `python -m spendslicer.web.app`: web\__init__ imports
 REM .app, so -m loads the module twice and runpy warns on every start.
 REM Set SPENDSLICER_RELOAD=1 to enable uvicorn autoreload while hacking.
-spendslicer-web
+"venv\Scripts\spendslicer-web.exe"
