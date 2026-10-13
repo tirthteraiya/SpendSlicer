@@ -117,7 +117,7 @@ def friendly_error(exc: Exception) -> str:
     name = type(exc).__name__
     if "SSO" in name:
         return "AWS SSO session missing or expired. Run `aws sso login --profile <name>`, then reload."
-    if name in ("CredentialRetrievalError", "FileNotFoundError"):
+    if name in ("CredentialRetrievalError", "FileNotFoundError", "UnicodeDecodeError"):
         return "AWS credential helper failed. Check credential_process in your AWS config, sign in with the helper, then retry."
     if "ConfigParseError" in name:
         return "AWS configuration could not be read. Fix the config or credentials file reported by `spendslicer doctor`, then retry."

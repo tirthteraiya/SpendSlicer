@@ -184,8 +184,8 @@ def test_frozen_helpers_do_not_inherit_bundled_library_paths(aws_files, monkeypa
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "_MEIPASS", str(bundle), raising=False)
     helper = config.parent / "frozen helper.py"
-    helper.write_text("import os,json\nassert os.environ['LD_LIBRARY_PATH']=='system-library-path'\nassert " + repr(str(bundle)) + " not in os.environ['PATH'].split(os.pathsep)\nprint(json.dumps({'Version':1,'AccessKeyId':'process-key','SecretAccessKey':'test-secret'}))\n")
-    config.write_text(f'[profile process]\ncredential_process="{sys.executable}" "{helper.as_posix()}"\n')
+    helper.write_text("import os,json\nassert os.environ['LD_LIBRARY_PATH']=='system-library-path'\nassert " + repr(str(bundle)) + " not in os.environ['PATH'].split(os.pathsep)\nprint(json.dumps({'Version':1,'AccessKeyId':'process-key','SecretAccessKey':'test-secret'}))\n", encoding="utf-8")
+    config.write_text(f'[profile process]\ncredential_process="{sys.executable}" "{helper.as_posix()}"\n', encoding="utf-8")
     session = make_session("process")
     if nested:
         # AssumeRoleProvider uses this same builder for every source_profile.
@@ -234,3 +234,23 @@ def test_audit_does_not_fan_out_without_a_verified_account(monkeypatch):
     monkeypatch.setattr(audit_api, "load_profile_bundle", lambda *args, **kwargs: SimpleNamespace(account_id=None))
     monkeypatch.setattr(audit_api, "run_audit", lambda *args, **kwargs: pytest.fail("unverified identity fan-out"))
     assert "verify the AWS account" in audit_api.build_audit_ctx("prod", "all", 0)["error"]
+
+
+def test_utf8_bom_profiles_and_nested_sdk_config_are_preserved(aws_files):
+    config, credentials = aws_files
+    config.write_text("[profile équipe]\nregion=us-east-1\ns3 =\n    addressing_style=path\n", encoding="utf-8-sig")
+    credentials.write_text("[équipe]\naws_access_key_id=utf8-key\naws_secret_access_key=test-secret\n", encoding="utf-8-sig")
+    assert list_profiles() == ["équipe"]
+    session = make_session("équipe")
+    assert session.get_credentials().access_key == "utf8-key"
+    assert session._session.get_scoped_config()["s3"] == {"addressing_style": "path"}
+
+
+def test_legacy_windows_encoded_profiles_still_work(aws_files, monkeypatch):
+    import locale
+    config, credentials = aws_files
+    config.write_bytes("[profile équipe]\nregion=us-east-1\n".encode("cp1252"))
+    credentials.write_bytes("[équipe]\naws_access_key_id=ansi-key\naws_secret_access_key=test-secret\n".encode("cp1252"))
+    monkeypatch.setattr(locale, "getpreferredencoding", lambda *args: "cp1252")
+    assert list_profiles() == ["équipe"]
+    assert make_session("équipe").get_credentials().access_key == "ansi-key"

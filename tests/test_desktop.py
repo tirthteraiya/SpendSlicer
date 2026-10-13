@@ -12,7 +12,8 @@ from fastapi.responses import HTMLResponse
 from spendslicer import desktop
 
 
-def test_server_owns_its_port_and_serves_without_using_a_proxy(monkeypatch):
+@pytest.mark.parametrize("windowed", [False, True])
+def test_server_owns_its_port_and_serves_without_using_a_proxy(monkeypatch, windowed):
     app = FastAPI()
     @app.get("/app")
     def index():
@@ -23,6 +24,9 @@ def test_server_owns_its_port_and_serves_without_using_a_proxy(monkeypatch):
     monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:1")
     monkeypatch.setenv("no_proxy", "")
     monkeypatch.setenv("NO_PROXY", "")
+    if windowed:
+        monkeypatch.setattr(sys, "stdout", None)
+        monkeypatch.setattr(sys, "stderr", None)
     server, thread, port = desktop._start_server("127.0.0.1", 0)
     try:
         assert port > 0

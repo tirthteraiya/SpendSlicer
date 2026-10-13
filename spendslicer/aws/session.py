@@ -25,6 +25,10 @@ import boto3
 import botocore.session
 from botocore.exceptions import ClientError
 
+from spendslicer.aws.config_encoding import configure as configure_config_encoding
+
+configure_config_encoding()
+
 log = logging.getLogger(__name__)
 
 T = TypeVar("T")

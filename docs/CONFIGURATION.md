@@ -48,6 +48,8 @@ to the app window. When starting with `uvicorn spendslicer.web.app:app`, set
 
 Profiles come from botocore's discovery, including SSO and `credential_process`.
 `AWS_CONFIG_FILE` and `AWS_SHARED_CREDENTIALS_FILE` may point to custom files.
+UTF-8 (including BOM) is supported; older Windows ANSI files retain a locale
+fallback, so non-ASCII profile names and credential-helper paths resolve correctly.
 The initial selection follows `AWS_DEFAULT_PROFILE`, then `AWS_PROFILE`, unless
 you have a saved or URL selection. Selecting `default` uses the literal
 `[default]` profile when present; on machines without it, the default credential

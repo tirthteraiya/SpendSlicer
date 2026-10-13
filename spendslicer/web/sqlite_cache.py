@@ -83,8 +83,14 @@ class SqliteCache:
         conn = getattr(self._local, "conn", None)
         if conn is None:
             conn = sqlite3.connect(self._path, check_same_thread=False, timeout=5.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL")
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA synchronous=NORMAL")
+            except sqlite3.Error:
+                # A failed PRAGMA must release its handle before corruption
+                # recovery unlinks the database, especially on Windows.
+                conn.close()
+                raise
             self._local.conn = conn
         return conn
 

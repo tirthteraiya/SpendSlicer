@@ -83,6 +83,8 @@ def _start_server(host: str, port: int):
         port=port,
         log_level=os.environ.get("SPENDSLICER_LOG_LEVEL", "warning"),
         access_log=False,
+        # Windowed Windows executables have no stdout for isatty().
+        use_colors=False,
     )
     server = uvicorn.Server(config)
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
