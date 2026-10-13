@@ -115,9 +115,10 @@ code.mono {
   height: 100%; display: flex; align-items: center; gap: 32px;
   max-width: var(--page-w); margin: 0 auto; padding-inline: var(--gut);
 }
-.brand { display: flex; align-items: center; gap: 1px; flex: none; }
+.brand { display: flex; align-items: center; gap: 0; flex: none; }
 .brand-mark {
-  width: 22px; height: 22px; flex: none;
+  width: var(--wordmark-mark-size); height: var(--wordmark-mark-size); flex: none;
+  margin-inline-end: calc(-1 * var(--wordmark-overlap));
   color: var(--ink);
   display: grid; place-items: center;
 }
@@ -181,7 +182,7 @@ code.mono {
 }
 
 @media (max-width: 1000px) {
-  .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
   .hero h1 { max-width: 20ch; }
 }
 
@@ -225,6 +226,16 @@ code.mono {
 .xp-tbl .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .xp-tbl .col-id { max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
 
+.xp-allocation { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--rule); }
+.xp-allocation > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 4px; }
+.xp-allocation dt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); }
+.xp-allocation dd { margin: 0; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.xp-allocation .is-drift { color: var(--signal); }
+
+.demo-state { padding: 32px; background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r-panel); }
+.demo-state h3 { margin: 0; font-size: 18px; }
+.demo-state p { margin: 12px 0 20px; max-width: 60ch; color: var(--ink-3); line-height: 1.6; }
+
 .xp-state {
   margin-left: 8px; padding: 1px 6px;
   border-radius: var(--r-mark);
@@ -240,6 +251,10 @@ code.mono {
 @media (max-width: 900px) {
   .xp-cols { grid-template-columns: 1fr; }
   .xp-tbl .col-id { max-width: 120px; }
+  .xp-tbl-res { table-layout: fixed; }
+  .xp-tbl-res .tt-lead { width: 50%; }
+  .xp-tbl-res .col-id { width: 22%; }
+  .xp-tbl-res .num { width: 28%; }
 }
 
 /* ── Live surfaces ───────────────────────────────────────────────────── */
@@ -456,8 +471,21 @@ code.mono {
 
 @media (max-width: 640px) {
   :root { --gut: 20px; }
+  .nav-in { gap: 12px; }
   .lp-sect { padding-block: 68px; }
   .hero { padding-block: 36px 60px; }
   .route { padding: 22px 20px 18px; }
   .hero-cta .lp-btn { flex: 1 1 auto; }
+  .hero-demo .board-main { padding: 18px; }
+  .hero-demo .board-aside-v { font-size: 18px; }
+  .hero-demo .board-aside { width: 100%; }
+  .hero-demo .board-aside-cell { flex: 1; min-width: 0; margin-left: 12px; padding-left: 12px; }
+  .hero-demo .board-aside-cell:first-child { margin-left: 0; padding-left: 0; }
+  .hero-demo .xcheck { display: grid; grid-template-columns: 1fr; padding: 12px 18px; gap: 10px; }
+  .hero-demo .xcheck-cell { padding: 0; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+  .hero-demo .xcheck-k { min-height: 0; font-size: 11.5px; }
+  .hero-demo .xcheck-v { font-size: 17px; white-space: nowrap; }
+  .hero-demo .xcheck-op { display: none; }
+  .hero-demo .xcheck-note { margin-top: 2px; padding-top: 10px; }
+  .hero-demo .dep-row:nth-child(n + 4) { display: none; }
 }

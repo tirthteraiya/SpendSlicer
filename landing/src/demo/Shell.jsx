@@ -20,7 +20,7 @@ export function Shell({ page, onPage, title, children, tall = false }) {
     <div className={`demo-shell ${tall ? "demo-shell-tall" : ""}`}>
       <aside className="demo-rail" aria-hidden="true">
         <div className="rail-brand">
-          <span className="rail-mark"><BrandMark size={22} /></span>
+          <span className="rail-mark"><BrandMark size="100%" /></span>
           <span className="rail-word">
             <span className="name">pendSlicer</span>
           </span>
@@ -62,14 +62,12 @@ export function ShellTabs({ tabs, active, onSelect, label }) {
   const keydown = (e) => {
     const i = tabs.findIndex((t) => t.key === active);
     const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    if (step) {
-      e.preventDefault();
-      onSelect(tabs[(i + step + tabs.length) % tabs.length].key);
-    } else if (e.key === "Home") {
-      e.preventDefault(); onSelect(tabs[0].key);
-    } else if (e.key === "End") {
-      e.preventDefault(); onSelect(tabs[tabs.length - 1].key);
-    }
+    const next = step ? (i + step + tabs.length) % tabs.length
+      : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
+    if (next == null) return;
+    e.preventDefault();
+    onSelect(tabs[next].key);
+    e.currentTarget.querySelectorAll('[role="tab"]')[next].focus();
   };
 
   return (

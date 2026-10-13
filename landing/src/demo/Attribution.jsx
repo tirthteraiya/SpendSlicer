@@ -1,19 +1,9 @@
-/* ─── The attribution explainer ────────────────────────────────────────
-   The one thing on this page that has to teach rather than display.
-
-   Pick a service. The left column is what AWS hands you: usage-type buckets
-   priced by the hour, with no machine attached. The right column is the same
-   spend against named resources.
-
-   Drift is deliberately absent here. The board above states it once, for the
-   account as a whole; repeating a per-service gap on every card invited the
-   reading that attribution mostly fails, which is the opposite of what these
-   two columns are for. Every figure is drawn from the shared demo dataset. */
+/* Reconcile every service's named estimates with its billed total. */
 
 import { useMemo, useState } from "react";
 import { Mark } from "@app/components/Marks.jsx";
 import { usd, value } from "@app/lib/format.js";
-import { SERVICES, COMPOSITION, RESOURCES } from "./data";
+import { SERVICES, COMPOSITION, RESOURCES, sum } from "./data";
 
 const COMPOSITION_COLORS = {
   compute: "var(--line-1)",
@@ -35,10 +25,12 @@ export function Attribution() {
       .sort((a, b) => value(b.cost) - value(a.cost));
     const named = RESOURCES.filter((r) => r.service === service)
       .sort((a, b) => value(b.cost) - value(a.cost));
-    return { svc, usage, named };
+    const attributed = sum(named);
+    const unattributed = Math.round((value(svc.cost) - attributed) * 100) / 100;
+    return { svc, usage, named, attributed, unattributed };
   }, [service]);
 
-  const { svc, usage, named } = view;
+  const { svc, usage, named, attributed, unattributed } = view;
 
   return (
     <div className="xp">
@@ -61,8 +53,7 @@ export function Attribution() {
         <b>{usd(svc.cost, 2)}</b>
         <Mark kind="exact" />
         <span className="xp-sum-note">
-          in this window. The left column is how AWS bills it. The right is the same spend against
-          things you can name.
+          in this window. Named estimates plus unattributed charges reconcile to this total.
         </span>
       </p>
 
@@ -101,7 +92,7 @@ export function Attribution() {
         <section className="xp-col xp-col-ours" aria-labelledby="xp-ours">
           <header className="xp-head">
             <h3 id="xp-ours">What SpendSlicer gives you</h3>
-            <p>The same money, against named resources.</p>
+            <p>Named resource estimates, with the remainder shown separately.</p>
           </header>
           <table className="tt xp-tbl xp-tbl-res">
             <tbody>
@@ -117,9 +108,13 @@ export function Attribution() {
               ))}
             </tbody>
           </table>
+          <dl className="xp-allocation">
+            <div><dt>Attributed <Mark kind="estimated" /></dt><dd>{usd(attributed, 2)}</dd></div>
+            <div><dt>Unattributed <Mark kind="drift" /></dt><dd className={unattributed > 0.01 ? "is-drift" : ""}>{usd(unattributed, 2)}</dd></div>
+          </dl>
           <p className="xp-foot">
             {named.length} named {named.length === 1 ? "resource" : "resources"}, each one something
-            you can go and look at. <Mark kind="estimated" /> The board reconciles the rest.
+            you can go and look at. Unattributed charges are never spread across these rows.
           </p>
         </section>
       </div>

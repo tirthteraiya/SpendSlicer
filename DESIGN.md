@@ -184,6 +184,10 @@ logo + “pendSlicer”. Never prepend a logo to the complete written brand name
 Production assets and typography live in `branding/kit/`; `branding/kit/index.html`
 is the visual usage guide. The logo uses Manrope 800 with −0.028em tracking.
 The dashboard's existing Manrope and JetBrains Mono roles remain authoritative.
+Interface wordmarks use a 26px S canvas with a 3px optical overlap, compensating
+for transparent image padding. The visible S and p remain separate; standalone
+symbols keep their own clear space. Horizontal kit lockups use the same enlarged,
+tightly spaced direction.
 
 **Slice Lime** (`--brand-lime`, `#B9F467`) appears only in the identity tile and
 marketing primary action. Its foreground is charcoal (`--brand-ink`, `#0F1318`),

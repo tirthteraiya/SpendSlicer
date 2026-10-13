@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Mark as BrandMark } from "@app/lib/icons.jsx";
 import { Board } from "./demo/Board";
 import { Attribution } from "./demo/Attribution";
+import { ErrorBoundary } from "@app/components/ErrorBoundary.jsx";
 
 /* Surfaces pulls in Recharts, which is the single heaviest thing on the page
    and is not needed to read the hero. Load it when the section is close to
@@ -26,7 +27,19 @@ function WhenNear({ children, minHeight }) {
 
   return (
     <div ref={ref} style={{ minHeight }}>
-      {near ? <Suspense fallback={null}>{children}</Suspense> : null}
+      {near ? (
+        <ErrorBoundary fallback={
+          <div className="demo-state" role="alert">
+            <h3>The demo could not load.</h3>
+            <p>Check your connection and reload the page. Installation and documentation links are still available.</p>
+            <button className="lp-btn lp-btn-quiet" type="button" onClick={() => window.location.reload()}>Reload demo</button>
+          </div>
+        }>
+          <Suspense fallback={<div className="demo-state" role="status">Loading interactive screens…</div>}>
+            {children}
+          </Suspense>
+        </ErrorBoundary>
+      ) : null}
     </div>
   );
 }
@@ -62,7 +75,7 @@ function useReveal() {
 function Wordmark() {
   return (
     <a className="brand" href="#top" aria-label="SpendSlicer, home">
-      <span className="brand-mark" aria-hidden="true"><BrandMark size={22} /></span>
+      <span className="brand-mark" aria-hidden="true"><BrandMark size="100%" /></span>
       <span className="brand-word" aria-hidden="true"><b>pendSlicer</b></span>
     </a>
   );
@@ -93,11 +106,10 @@ function Hero() {
     <section className="hero lp-sect">
       <div className="wrap hero-grid">
         <div className="lift">
-          <h1>The console will not name the machine.</h1>
+          <h1>See AWS spend by resource.</h1>
           <p className="lede">
-            SpendSlicer names it, and carries the provenance of every figure. It runs on your
-            own laptop against your own AWS profile &mdash; no account linking, no agent, and no
-            cost data ever leaves the machine.
+            Find named resources behind your AWS bill, with exact totals and clearly labeled
+            estimates. Runs locally with your existing profiles.
           </p>
           <div className="hero-cta">
             <a className="lp-btn lp-btn-solid" href="#install">Install</a>
@@ -121,11 +133,10 @@ function AttributionSection() {
     <section id="attribution" className="lp-sect sect-rule">
       <div className="wrap">
         <div className="head-block rise">
-          <h2>AWS prices the usage type. It does not name the machine.</h2>
+          <h2>From billed usage to named resources.</h2>
           <p className="lede">
-            This is the whole difference, and it is easier to see than to explain. Pick any
-            service below. The left column is every way AWS priced it. The right names the
-            machines behind the same spend. Only one of them tells you what to go and switch off.
+            Compare billed usage with named resources. Each estimate is labeled, and any
+            unattributed charge stays visible.
           </p>
         </div>
         <div className="rise">
@@ -143,11 +154,8 @@ function SurfacesSection() {
         <div className="head-block rise">
           <h2>Every service on the bill, not a chosen few.</h2>
           <p className="lede">
-            Running below, not a screenshot. Whatever Cost Explorer bills you appears here &mdash;
-            EC2 and RDS alongside Lambda, ECS, OpenSearch, SQS, SNS, NAT gateways and the long tail
-            of small services that quietly add up. Open a service row, filter by service, copy a
-            resource ID. Audit and Export are the other two screens: a waste list of resources
-            billing without earning it, and CSV, JSON or PDF written by your own machine.
+            Explore services and named resources with sample data. Expand a service, filter
+            resources, or copy an ID.
           </p>
         </div>
         <div className="rise">
@@ -256,17 +264,17 @@ function LocalSection() {
 
 function Cmd({ children, copy }) {
   const done = useRef(null);
-  const onClick = async (e) => {
-    const btn = e.currentTarget;
+  const [state, setState] = useState("");
+  const onClick = async () => {
     try {
       if (!navigator.clipboard || !window.isSecureContext) throw new Error("no clipboard");
       await navigator.clipboard.writeText(copy);
-      btn.dataset.state = "done";
+      setState("done");
     } catch {
-      btn.dataset.state = "fail";
+      setState("fail");
     }
     clearTimeout(done.current);
-    done.current = setTimeout(() => { delete btn.dataset.state; }, 1600);
+    done.current = setTimeout(() => setState(""), 1600);
   };
   useEffect(() => () => clearTimeout(done.current), []);
 
@@ -274,11 +282,14 @@ function Cmd({ children, copy }) {
     <div className="cmd">
       <code>{children}</code>
       <button className="cmd-copy" type="button" onClick={onClick}
-              aria-label={`Copy: ${copy}`}>
+              data-state={state || undefined} aria-label={`Copy: ${copy}`}>
         <span className="cmd-copy-idle" aria-hidden="true">Copy</span>
         <span className="cmd-copy-done" aria-hidden="true">Copied</span>
         <span className="cmd-copy-fail" aria-hidden="true">Failed</span>
       </button>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {state === "done" ? "Command copied." : state === "fail" ? "Could not copy. Select the command and copy it manually." : ""}
+      </span>
     </div>
   );
 }

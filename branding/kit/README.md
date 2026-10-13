@@ -36,7 +36,11 @@ Manrope 700 figures; Manrope 400–600 interface text. Tabular numerals for mone
 JetBrains Mono 400 for code and literal identifiers only. Fonts remain local.
 
 Clear space: at least one diagonal band-width around standalone marks. Symbol:
-24px preferred minimum; integrated interface lettering may use a 22px canvas.
+24px preferred minimum. Integrated interface wordmarks use a 26px symbol canvas
+with a 3px optical overlap to compensate for the transparent right margin. The
+S is approximately 18% larger than the previous interface mark. Horizontal SVG
+wordmarks use a 106-unit symbol canvas, with lettering starting at 90 units;
+the transparent padding overlaps, while the visible S and p remain separate.
 Horizontal lockup: 160px preferred minimum. Never stretch, rotate, add effects,
 change the diagonal gap, or add a vertical dollar stem. Do not prepend the symbol
 to the full written name. Ordinary prose and accessible names remain SpendSlicer.

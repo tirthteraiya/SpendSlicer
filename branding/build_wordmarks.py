@@ -42,10 +42,10 @@ for name, color in colors.items():
     )
     words = f'<g fill="{color}" transform="translate(0 78) scale({scale} {-scale})">{lettering}</g>'
     inline = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width + 84:.3f} 108">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width + 90:.3f} 108">'
         '<title>SpendSlicer</title>'
-        f'<g transform="translate(0 -4) scale({90 / pw} {90 / ph})">{symbol}</g>'
-        f'<g transform="translate(84 0)">{words}</g></svg>'
+        f'<g transform="translate(0 -12) scale({106 / pw} {106 / ph})">{symbol}</g>'
+        f'<g transform="translate(90 0)">{words}</g></svg>'
     )
     for variant in ("wordmark", "lockup"):
         (KIT / f"{variant}-{name}.svg").write_text(inline)

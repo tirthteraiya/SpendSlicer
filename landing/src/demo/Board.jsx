@@ -52,8 +52,7 @@ export function Xcheck() {
         <span className="xcheck-v">{usd(CE_TOTAL, 2)}</span>
       </div>
       <p className="xcheck-note">
-        Attributed plus drift equals the Cost Explorer total. Drift is charge that could not be
-        tied to a named resource, and it is never spread across the rows.
+        Attributed + drift = billed total. Unattributed charges stay separate from named resource estimates.
       </p>
     </div>
   );

@@ -168,7 +168,7 @@ function Rail({ page, setPage, profile, collapsed, setCollapsed }) {
   return (
     <aside className="rail">
       <div className="rail-brand" aria-label="SpendSlicer">
-        <span className="rail-mark"><BrandMark size={22} /></span>
+        <span className="rail-mark"><BrandMark size="100%" /></span>
         <span className="rail-word" aria-hidden="true">
           <span className="name">pendSlicer</span>
         </span>
@@ -216,7 +216,7 @@ function MobileNav({ open, setOpen, page, setPage, profile }) {
     >
       <div className="sheet-body">
         <div className="rail-brand" aria-label="SpendSlicer">
-          <span className="rail-mark"><BrandMark size={22} /></span>
+          <span className="rail-mark"><BrandMark size="100%" /></span>
           <span className="rail-word">
             <span className="name" aria-hidden="true">pendSlicer</span>
             <span className="where">{profile}</span>
