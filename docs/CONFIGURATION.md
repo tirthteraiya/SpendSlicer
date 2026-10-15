@@ -1,8 +1,9 @@
 # Configuration
 
-Everything is configured through environment variables. There is no config
-file, and none of these are required — SpendSlicer runs with sensible defaults
-out of the box.
+SpendSlicer runs with sensible defaults and no required config file. Launch with
+`spendslicer` to open the local dashboard in your default browser. `--host` and
+`--port` override the corresponding environment variables; `--no-browser` skips
+browser opening. Use `--help` for options and `--version` for the installed version.
 
 ## Server
 
@@ -10,7 +11,7 @@ out of the box.
 | --- | --- | --- |
 | `SPENDSLICER_HOST` | `127.0.0.1` | Bind address. For remote access, configure `SPENDSLICER_ALLOWED_HOSTS` and a persistent `SPENDSLICER_AUTH_TOKEN`. |
 | `SPENDSLICER_PORT` | `8080` | Bind port. The desktop app ignores this and asks the OS for a free port unless you set it explicitly. |
-| `SPENDSLICER_RELOAD` | `0` | `1` enables uvicorn autoreload. Development only — it re-execs the process and breaks frozen builds. |
+| `SPENDSLICER_RELOAD` | `0` | `1` enables uvicorn autoreload through the legacy `spendslicer-web` / web-module launcher. Development only — it re-execs the process and breaks frozen builds. |
 | `SPENDSLICER_LOG_LEVEL` | `warning` | Standard log levels. `debug` is useful when diagnosing AWS call failures. |
 
 ## Security
@@ -21,7 +22,7 @@ out of the box.
 | `SPENDSLICER_ALLOWED_HOSTS` | `localhost,127.0.0.1,::1` | Comma-separated hosts accepted on every request and for the Origin/Referer check on state-changing requests. |
 
 The web launcher generates a random token and prints a protected dashboard link
-in the terminal. Open that link; the dashboard captures the token, removes it
+in the terminal and opens it in the default browser. The dashboard captures the token, removes it
 from the visible URL, and sends it with API requests. Access logs are disabled
 by the launcher so the token is not recorded in request logs. Keep the printed
 link private. On the default local web launch, `/app` can also reconnect
@@ -37,7 +38,7 @@ by clients:
 export SPENDSLICER_AUTH_TOKEN="$(openssl rand -base64 32)"
 export SPENDSLICER_HOST=0.0.0.0
 export SPENDSLICER_ALLOWED_HOSTS=spendslicer.internal.example.com
-spendslicer-web
+spendslicer --no-browser
 ```
 
 The desktop builds also generate a token and pass the protected link directly

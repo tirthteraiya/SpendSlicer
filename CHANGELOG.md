@@ -23,6 +23,10 @@ usable this is while buying no real freedom.
 
 ### Added
 
+- **One-command browser launch.** `spendslicer` starts the dashboard and opens
+  the default browser after the server is listening. Standard `--help`, `-h`,
+  `--version`, and `-V` options, plus `--host`, `--port`, and `--no-browser`.
+  Doctor and CUR help work without starting the dashboard or contacting AWS.
 - **On PyPI.** `pipx install spendslicer` gets the dashboard; the tag-triggered
   release workflow publishes through PyPI trusted publishing, and refuses to
   run when the tag and `spendslicer.__version__` disagree.

@@ -309,7 +309,19 @@ def local_browser_auth(request: Request):
     return JSONResponse({"token": token}, headers={"Cache-Control": "no-store"})
 
 
-def serve(host: str = "127.0.0.1", port: int = 8080, reload: bool = False) -> None:
+def _open_browser(url: str) -> None:
+    import webbrowser
+
+    try:
+        if webbrowser.open(url):
+            return
+    except (webbrowser.Error, OSError):
+        pass
+    log.warning("Could not open the default browser. Open the dashboard link printed above.")
+
+
+def serve(host: str = "127.0.0.1", port: int = 8080, reload: bool = False,
+          open_browser: bool = False) -> None:
     """Run the dashboard under uvicorn.
 
     ``reload`` is opt-in: it re-execs the process via a watcher, which breaks
@@ -322,9 +334,20 @@ def serve(host: str = "127.0.0.1", port: int = 8080, reload: bool = False) -> No
     browser_host = "127.0.0.1" if host == "0.0.0.0" else "[::1]" if host == "::" else host
     if ":" in browser_host and not browser_host.startswith("["):
         browser_host = f"[{browser_host}]"
-    print(f"Open SpendSlicer: http://{browser_host}:{port}/app?token={quote(token, safe='')}", flush=True)
+    url = f"http://{browser_host}:{port}/app?token={quote(token, safe='')}"
+    print(f"Open SpendSlicer: {url}", flush=True)
 
-    if reload:
+    if open_browser and not reload:
+        class BrowserServer(uvicorn.Server):
+            async def startup(self, sockets=None):
+                await super().startup(sockets=sockets)
+                if self.started and not self.should_exit:
+                    threading.Thread(target=_open_browser, args=(url,), daemon=True,
+                                     name="spendslicer-browser").start()
+
+        print("Press Ctrl+C to stop SpendSlicer.", flush=True)
+        BrowserServer(uvicorn.Config(app, host=host, port=port, access_log=False)).run()
+    elif reload:
         # The import-string form is required for reload to work at all.
         uvicorn.run("spendslicer.web.app:app", host=host, port=port, reload=True, access_log=False)
     else:

@@ -64,7 +64,7 @@ This downloads new Parquet partitions into
 ```bash
 export SPENDSLICER_CUR_BUCKET="spendslicer-cur-123456789012-us-east-1"
 export SPENDSLICER_CUR_PREFIX="cur/"
-spendslicer-web
+spendslicer
 ```
 
 With `SPENDSLICER_CUR_BUCKET` set, a background worker re-ingests every 6 hours

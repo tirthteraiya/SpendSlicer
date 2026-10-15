@@ -1,7 +1,7 @@
 """Web UI — FastAPI backend serving a prebuilt React single-page app.
 
 Run with:
-    spendslicer-web  # open the protected link printed in the terminal
+    spendslicer  # starts the dashboard and opens the default browser
 
 Or via the helpers:
     from spendslicer.web.app import serve

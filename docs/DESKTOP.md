@@ -81,7 +81,7 @@ never writes to either.
 
 ## How the desktop build differs from self-hosting
 
-| | Desktop app | `spendslicer-web` |
+| | Desktop app | `spendslicer` |
 | --- | --- | --- |
 | Port | OS-assigned, ephemeral | 8080 |
 | Auth | Random token minted per launch | Random token minted per launch |
@@ -90,8 +90,9 @@ never writes to either.
 
 Both launchers require a token for AWS endpoints, including `GET` requests that
 can spend Cost Explorer money. The desktop app passes the protected link to its
-window automatically; `spendslicer-web` prints it in the terminal for you to
-open. Every request also validates its hostname to prevent DNS rebinding.
+window automatically; `spendslicer` opens it in the default browser and prints
+a fallback link in the terminal. `--no-browser` skips browser opening. Every
+request also validates its hostname to prevent DNS rebinding.
 
 ---
 

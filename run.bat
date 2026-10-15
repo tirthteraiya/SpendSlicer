@@ -39,10 +39,7 @@ if errorlevel 1 exit /b 1
 
 echo.
 echo Starting SpendSlicer. Your local browser connects automatically.
-echo Open http://127.0.0.1:8080/app or the protected link printed below.
+echo Your default browser opens after the server starts.
 echo Press Ctrl+C to stop.
 echo.
-REM The console script, not `python -m spendslicer.web.app`: web\__init__ imports
-REM .app, so -m loads the module twice and runpy warns on every start.
-REM Set SPENDSLICER_RELOAD=1 to enable uvicorn autoreload while hacking.
-"venv\Scripts\spendslicer-web.exe"
+"venv\Scripts\spendslicer.exe" %*

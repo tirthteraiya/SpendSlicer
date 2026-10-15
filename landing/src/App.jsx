@@ -308,10 +308,10 @@ function InstallSection() {
             <h3>pip</h3>
             <p>The dashboard bundle ships inside the wheel, so Node.js is not required to run it.</p>
             <Cmd copy={'pip install "spendslicer[web,cur]"'}>pip install "spendslicer[web,cur]"</Cmd>
-            <Cmd copy="spendslicer-web">spendslicer-web</Cmd>
+            <Cmd copy="spendslicer">spendslicer</Cmd>
             <p className="route-note">
-              Then open <code className="mono">http://127.0.0.1:8080/app</code>. Requires Python
-              3.10 or newer.
+              Opens your default browser at <code className="mono">http://127.0.0.1:8080/app</code>.
+              Keep the terminal open while using it. Requires Python 3.10 or newer.
             </p>
           </div>
 

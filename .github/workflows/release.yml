@@ -166,7 +166,7 @@ jobs:
 
             ```
             pip install spendslicer[web,cur]
-            spendslicer-web
+            spendslicer
             ```
 
             Verify a download with the matching `.sha256` file.

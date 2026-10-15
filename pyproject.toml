@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
     "boto3>=1.34",
     "botocore>=1.34",
-    # The dashboard is the product; without these `spendslicer-web` died with
+    # The dashboard is the product; without these the launcher died with
     # ModuleNotFoundError on a plain `pip install spendslicer`.
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",

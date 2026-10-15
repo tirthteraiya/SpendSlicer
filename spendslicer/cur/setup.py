@@ -8,11 +8,6 @@ import os
 import sys
 from pathlib import Path
 
-import boto3
-
-from spendslicer.cur.ingestor import CurIngestor
-from spendslicer.cur.schema import connect, get_parquet_glob
-
 log = logging.getLogger("spendslicer.cur.setup")
 
 
@@ -31,6 +26,8 @@ def _local_dir() -> Path:
 
 
 def cmd_status(_args) -> int:
+    from spendslicer.cur.schema import connect, get_parquet_glob
+
     db = connect(_db_path())
     glob = get_parquet_glob(db)
     if not glob:
@@ -47,6 +44,11 @@ def cmd_status(_args) -> int:
 
 
 def cmd_ingest(args) -> int:
+    import boto3
+
+    from spendslicer.cur.ingestor import CurIngestor
+    from spendslicer.cur.schema import connect
+
     session = boto3.Session(profile_name=args.profile) if args.profile else boto3.Session()
     s3 = session.client("s3")
     db = connect(_db_path())

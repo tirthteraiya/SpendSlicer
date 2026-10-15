@@ -15,6 +15,7 @@ optional identity check calls sts:GetCallerIdentity, which is also free.
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 
@@ -122,5 +123,7 @@ def run(check_identity: bool = True) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = argv if argv is not None else []
-    return run(check_identity="--offline" not in args)
+    parser = argparse.ArgumentParser(prog="spendslicer doctor", description="Check local AWS profiles and credentials.")
+    parser.add_argument("--offline", action="store_true", help="check credentials without an AWS identity request")
+    args = parser.parse_args(argv)
+    return run(check_identity=not args.offline)

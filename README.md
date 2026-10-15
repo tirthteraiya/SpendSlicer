@@ -90,16 +90,28 @@ Download from [Releases](https://github.com/tirthteraiya/SpendSlicer/releases):
 
 ```bash
 pipx install spendslicer   # or: pip install spendslicer
-spendslicer-web            # open the protected dashboard link printed in the terminal
+spendslicer                # starts locally and opens your default browser
 ```
 
 The dashboard bundle and PDF export support ship with the package, so Node.js
-is not required. Each launch prints a dashboard link with a fresh access token;
-open that link to connect. Local browser tabs can also open `/app` directly and
+is not required. Keep the terminal open while using the app; press Ctrl+C to stop.
+Each launch opens your default browser after the server is listening and prints
+a protected dashboard link as a fallback. Local browser tabs can also open `/app` directly and
 reconnect automatically after a server restart. For
 exact per-resource costs from the CUR warehouse, install the extra:
 `pipx install "spendslicer[cur]"`. Try it without installing anything:
-`uvx --from spendslicer spendslicer-web`.
+`uvx spendslicer`.
+
+```bash
+spendslicer --help              # commands and launch options
+spendslicer --version           # installed version
+spendslicer --port 8081         # use another port
+spendslicer --no-browser        # run without opening a browser
+spendslicer doctor --help       # AWS credential diagnostics
+```
+
+`--host` and `--port` override `SPENDSLICER_HOST` and `SPENDSLICER_PORT`.
+The old `spendslicer-web` command remains available for existing scripts.
 
 ### From source
 

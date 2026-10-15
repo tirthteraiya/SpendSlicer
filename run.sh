@@ -36,11 +36,7 @@ pip install --quiet -e ".[web,cur]"
 
 echo
 echo "Starting SpendSlicer. Your local browser connects automatically."
-echo "Open http://127.0.0.1:8080/app or the protected link printed below."
+echo "Your default browser opens after the server starts."
 echo "Press Ctrl+C to stop."
 echo
-# The console script, not `python -m spendslicer.web.app`: web/__init__ imports
-# .app, so -m loads the module twice and runpy prints a RuntimeWarning about
-# it on every start. Same entry point, no warning.
-# SPENDSLICER_RELOAD=1 enables uvicorn's autoreload for hacking.
-exec spendslicer-web
+exec spendslicer "$@"

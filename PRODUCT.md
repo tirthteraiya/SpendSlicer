@@ -57,7 +57,7 @@ Three things a neighboring product cannot truthfully copy:
 ## Operating Context
 
 - Launched from a laptop: `./run.sh`, `pip install "spendslicer[web,cur]"` then
-  `spendslicer-web`, or an unsigned native desktop build (macOS `.dmg`,
+  `spendslicer` (opens the default browser), or an unsigned native desktop build (macOS `.dmg`,
   Windows `.zip`) that binds an ephemeral loopback port and mints a per-launch
   auth token.
 - Reads `~/.aws/credentials` and `~/.aws/config` directly; the profile picker
